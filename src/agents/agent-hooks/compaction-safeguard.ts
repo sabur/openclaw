@@ -62,7 +62,7 @@ const TURN_PREFIX_INSTRUCTIONS =
   " early progress, and any details needed to understand the retained suffix.";
 const MAX_TOOL_FAILURES = 8;
 const MAX_TOOL_FAILURE_CHARS = 240;
-const MAX_COMPACTION_SUMMARY_CHARS = 16_000;
+const MAX_COMPACTION_SUMMARY_CHARS = 64_000; // Increased from 16K to 64K for better continuity
 const MAX_FILE_OPS_SECTION_CHARS = 2_000;
 const MAX_FILE_OPS_LIST_CHARS = 900;
 const SUMMARY_TRUNCATED_MARKER = "\n\n[Compaction summary truncated to fit budget]";

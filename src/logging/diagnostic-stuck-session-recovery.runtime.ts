@@ -30,7 +30,7 @@ import { isDiagnosticSessionStateCurrent } from "./diagnostic-session-state.js";
 
 // Runtime repair path for diagnostic sessions that appear stuck in processing/waiting states.
 const STUCK_SESSION_ABORT_SETTLE_MS = 15_000;
-const STUCK_SESSION_PROGRESS_STALE_MS = 5 * 60_000;
+const STUCK_SESSION_PROGRESS_STALE_MS = 15 * 60_000; // 15 min for long prefill
 const recoveriesInFlight = new Set<string>();
 
 /** Request parameters accepted by the stuck-session recovery runtime. */
