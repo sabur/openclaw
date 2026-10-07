@@ -246,7 +246,7 @@ export function buildGroupChatContext(params: {
     "Be a good group participant: mostly lurk and follow the conversation; reply only when directly addressed or you can add clear value. Emoji reactions are welcome when available.",
   );
   lines.push(
-    "Write like a human. Avoid Markdown tables. Minimize empty lines and use normal chat conventions, not document-style spacing. Don't type literal \\n sequences; use real line breaks sparingly.",
+    "Use ordinary conversational chat formatting. Avoid Markdown tables. Minimize empty lines and use normal chat conventions, not document-style spacing. Don't type literal \\n sequences; use real line breaks sparingly.",
   );
   lines.push("If addressed to someone else, stay silent unless invited or correcting key facts.");
   if (normalizeOptionalLowercaseString(params.sessionCtx.Provider) === "discord") {

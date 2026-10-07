@@ -27,7 +27,6 @@ import { EmbeddedBlockChunker, type BlockReplyChunking } from "./embedded-agent-
 import { resolveModelWithRegistry } from "./embedded-agent-runner/model.js";
 import { getActiveEmbeddedRunSnapshot } from "./embedded-agent-runner/runs.js";
 import { resolveEmbeddedAgentStreamFn } from "./embedded-agent-runner/stream-resolution.js";
-import { applyPreparedRuntimeAuthToModel } from "./provider-request-config.js";
 import { resolveAvailableAgentHarnessPolicy, selectAgentHarness } from "./harness/selection.js";
 import {
   resolveImageSanitizationLimits,
@@ -41,6 +40,7 @@ import {
 } from "./model-auth.js";
 import { ensureOpenClawModelsJson } from "./models-config.js";
 import { listOpenAIAuthProfileProvidersForAgentRuntime } from "./openai-routing.js";
+import { applyPreparedRuntimeAuthToModel } from "./provider-request-config.js";
 import { registerProviderStreamForModel } from "./provider-stream.js";
 import { stripToolResultDetails } from "./session-transcript-repair.js";
 import { sanitizeImageBlocks } from "./tool-images.js";
@@ -61,7 +61,7 @@ function collectThinkingContent(content: Array<{ type?: string; thinking?: strin
 
 function buildBtwSystemPrompt(): string {
   return [
-    "You are answering an ephemeral /btw side question about the current conversation.",
+    "Answer the bounded /btw side question about the current conversation.",
     "Use the conversation only as background context.",
     "Answer only the side question in the last user message.",
     "Do not continue, resume, or complete any unfinished task from the conversation.",

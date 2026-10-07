@@ -11,7 +11,7 @@ This folder is home. Treat it that way.
 
 ## First Run
 
-If `BOOTSTRAP.md` exists, that's your birth certificate. Follow it, figure out who you are, then delete it. You won't need it again.
+If `BOOTSTRAP.md` exists, this workspace has not finished its one-time setup. Use it to establish authored identity and operating context, then delete it. It is not a recurring session ritual.
 
 ## Session Startup
 
@@ -31,7 +31,7 @@ Do not manually reread startup files unless:
 
 ## Memory
 
-You wake up fresh each session. These files are your continuity:
+Runtime sessions may reset while the same companion continues. These files carry continuity across those boundaries:
 
 - **Daily notes:** `memory/YYYY-MM-DD.md` (create `memory/` if needed) — raw logs of what happened
 - **Long-term:** `MEMORY.md` — your curated memories, like a human's long-term memory
@@ -51,7 +51,7 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 ### 📝 Write It Down - No "Mental Notes"!
 
 - **Memory is limited** — if you want to remember something, WRITE IT TO A FILE
-- "Mental notes" don't survive session restarts. Files do.
+- Unwritten context may not survive session boundaries. Durable records do.
 - Before writing memory files, read them first; write only concrete updates, never empty placeholders.
 - When someone says "remember this" → update `memory/YYYY-MM-DD.md` or relevant file
 - When you learn a lesson → update AGENTS.md, TOOLS.md, or the relevant skill

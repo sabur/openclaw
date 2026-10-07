@@ -22,8 +22,8 @@ export function buildHierarchyReinforcementMessage(snapshot: HandoffSnapshot): A
     .join("\n");
 
   const content = [
-    "[SYSTEM HANDOFF] The previous model is no longer active and a fallback model is now active.",
-    "You are the new LEADER (Orchestrator). Do not perform tasks already delegated to subordinates.",
+    "[RUNTIME SUBSTRATE HANDOFF] The active model changed while the same companion session and task continue.",
+    "Continue coordinating the existing task. Do not repeat work already delegated to bounded workers.",
     "",
     "ACTIVE SUBORDINATE UNITS:",
     subagentReport || "None active.",

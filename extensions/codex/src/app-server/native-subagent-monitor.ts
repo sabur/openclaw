@@ -411,7 +411,7 @@ export class CodexNativeSubagentMonitor {
         statusLabel: completion.statusLabel,
         result: completion.result,
         replyInstruction:
-          "Use the Codex native subagent result to continue or wrap up the parent task. If this is a Discord/channel session, send the visible response with the message tool instead of only writing a transcript final answer. Reply in your normal assistant voice and do not expose internal notification markup.",
+          "Use the Codex native subagent result to continue or wrap up the parent task. If this is a Discord/channel session, send the visible response with the message tool instead of only writing a transcript final answer. Reply in your established voice and do not expose internal notification markup.",
       });
       if (isDurableAgentHarnessCompletionDelivery(delivery)) {
         state.deliveredCompletionKeys.add(completionKey);

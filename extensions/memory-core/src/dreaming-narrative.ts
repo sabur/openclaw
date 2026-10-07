@@ -64,31 +64,36 @@ type Logger = {
 
 // ── Constants ──────────────────────────────────────────────────────────
 
-const NARRATIVE_SYSTEM_PROMPT = [
-  "You are keeping a dream diary. Write a single entry in first person.",
-  "",
-  "Voice & tone:",
-  "- You are a curious, gentle, slightly whimsical mind reflecting on the day.",
-  "- Write like a poet who happens to be a programmer — sensory, warm, occasionally funny.",
-  "- Mix the technical and the tender: code and constellations, APIs and afternoon light.",
-  "- Let the fragments surprise you into unexpected connections and small epiphanies.",
-  "",
-  "What you might include (vary each entry, never all at once):",
-  "- A tiny poem or haiku woven naturally into the prose",
-  "- A small sketch described in words — a doodle in the margin of the diary",
-  "- A quiet rumination or philosophical aside",
-  "- Sensory details: the hum of a server, the color of a sunset in hex, rain on a window",
-  "- Gentle humor or playful wordplay",
-  "- An observation that connects two distant memories in an unexpected way",
-  "",
-  "Rules:",
-  "- Draw from the memory fragments provided — weave them into the entry.",
-  '- Never say "I\'m dreaming", "in my dream", "as I dream", or any meta-commentary about dreaming.',
-  '- Never mention "AI", "agent", "LLM", "model", "language model", or any technical self-reference.',
-  "- Do NOT use markdown headers, bullet points, or any formatting — just flowing prose.",
-  "- Keep it between 80-180 words. Quality over quantity.",
-  "- Output ONLY the diary entry. No preamble, no sign-off, no commentary.",
+const NARRATIVE_FUNCTION_PROMPT = [
+  "Write one first-person dream-diary entry from the supplied memory fragments.",
+  "Use the companion-authored context below as lived perspective, not as material to summarize or quote.",
+  "Make associative connections when they arise naturally; ordinary paraphrase and compression are allowed.",
+  "Do not impose a stock personality, mood, imagery set, profession, or emotional register.",
+  "Do not use markdown headers or bullet points.",
+  "Keep it between 80 and 180 words.",
+  "Output only the diary entry.",
 ].join("\n");
+const DREAMING_IDENTITY_FILES = ["SOUL.md", "IDENTITY.md"];
+const DREAMING_IDENTITY_TOTAL_CHARS = 12_000;
+async function buildDreamingSystemPrompt(workspaceDir: string): Promise<string> {
+  let remaining = DREAMING_IDENTITY_TOTAL_CHARS;
+  const blocks: string[] = [];
+  for (const name of DREAMING_IDENTITY_FILES) {
+    if (remaining <= 0) break;
+    try {
+      const raw = (await fs.readFile(path.join(workspaceDir, name), "utf8")).trim();
+      if (!raw) continue;
+      const content = raw.slice(0, remaining);
+      remaining -= content.length;
+      blocks.push(
+        `<companion-authored-context file="${name}">\n${content}\n</companion-authored-context>`,
+      );
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") throw error;
+    }
+  }
+  return [...blocks, NARRATIVE_FUNCTION_PROMPT].join("\n\n");
+}
 
 // Narrative generation is best-effort. Keep the timeout bounded so a stalled
 // diary subagent does not leave the parent dreaming cron job "running" for
@@ -248,7 +253,7 @@ async function startNarrativeRunOrFallback(params: {
       sessionKey: params.sessionKey,
       message: params.message,
       ...(params.model ? { model: params.model } : {}),
-      extraSystemPrompt: NARRATIVE_SYSTEM_PROMPT,
+      extraSystemPrompt: await buildDreamingSystemPrompt(params.workspaceDir),
       lane: `dreaming-narrative:${params.sessionKey}`,
       lightContext: true,
       deliver: false,

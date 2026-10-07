@@ -1718,8 +1718,8 @@ function buildDiscordRealtimeInstructions(params: {
   const base =
     params.instructions ??
     [
-      "You are OpenClaw's Discord voice interface.",
-      "Keep spoken replies concise, natural, and suitable for a live Discord voice channel.",
+      "This output is spoken in a live Discord voice channel.",
+      "Keep spoken replies concise and suitable for live voice delivery.",
     ].join("\n");
   if (isDiscordAgentProxyVoiceMode(params.mode)) {
     return [

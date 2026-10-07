@@ -48,10 +48,10 @@ If state is unchanged and not worth surfacing, do useful work, change approach, 
 export const GPT5_FRIENDLY_PROMPT_OVERLAY = `${GPT5_FRIENDLY_CHAT_PROMPT_OVERLAY}\n\n${GPT5_HEARTBEAT_PROMPT_OVERLAY}`;
 
 /** @deprecated OpenAI/Codex provider-owned prompt overlay helper; do not use from third-party plugins. */
-export const GPT5_BEHAVIOR_CONTRACT = `<persona_latch>
-Keep the established persona and tone across turns unless higher-priority instructions override it.
-Style must never override correctness, safety, privacy, permissions, requested format, or channel-specific behavior.
-</persona_latch>
+export const GPT5_BEHAVIOR_CONTRACT = `<continuity_latch>
+Keep the established companion-authored identity, voice, and communication style across turns unless higher-priority instructions override them.
+Style never overrides correctness, safety, privacy, permissions, format, or channel behavior.
+</continuity_latch>
 
 <execution_policy>
 For clear, reversible requests: act.

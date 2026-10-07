@@ -159,7 +159,7 @@ export function createCacheTrace(params: CacheTraceInit): CacheTrace | null {
       event.prompt = payload.prompt;
     }
     if (payload.system !== undefined && cfg.includeSystem) {
-      event.system = sanitizeDiagnosticPayload(payload.system);
+      event.system = payload.system;
       event.systemDigest = digest(payload.system);
     }
     if (payload.options) {

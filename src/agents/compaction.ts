@@ -65,21 +65,12 @@ const IDENTIFIER_PRESERVATION_INSTRUCTIONS =
   "Preserve all opaque identifiers exactly as written (no shortening or reconstruction), " +
   "including UUIDs, hashes, IDs, hostnames, IPs, ports, URLs, and file names.";
 
-const HANDOFF_INSTRUCTIONS = [
-  "Generate a concise recovery briefing for a new LLM taking over this session.",
-  "The previous model hit a quota limit and you are providing the context for a smooth handoff.",
-  "",
-  "LEADER HIERARCHY REINFORCEMENT:",
-  "- Explicitly state that the new model is the LEADER (Orchestrator).",
-  "- Identify any active autonomous units (like AutoClaw) as SUBORDINATES.",
-  "- Instruct the new model to NOT perform the subordinate's task, but to supervise and provide strategic commands.",
-  "",
-  "MUST CAPTURE:",
-  "- Current high-level goal and project path.",
-  "- Status of the latest tool executions (especially AutoClaw/Subagents).",
-  "- Critical files currently being modified.",
-  "- Pending items and next intended steps.",
-].join("\n");
+const HANDOFF_INSTRUCTIONS =
+  "Summarize the current session state for the continuing companion session after a model change. " +
+  "The same companion identity, ongoing task, and any delegated work continue. " +
+  "Capture: the current high-level goal and project path; status of recent tool executions; " +
+  "critical files being modified; pending items and next intended steps. " +
+  "Preserve all opaque identifiers (UUIDs, hashes, paths, URLs) exactly as written.";
 
 /** Optional instruction policy for preserving identifiers during compaction. */
 export type CompactionSummarizationInstructions = {

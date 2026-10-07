@@ -99,7 +99,7 @@ function formatTaskCompletionEventForPlainPrompt(event: AgentTaskCompletionInter
   const result = formatChildResultDataBlock(event.result);
   const attachmentLines = formatGeneratedAttachmentLines(event.attachments);
   const lines = [
-    "A background task completed. Use this result to reply to the user in your normal assistant voice.",
+    "A background task completed. Use this result to reply to the user in your established voice.",
     "",
     `source: ${event.source}`,
     `session_key: ${sessionKey}`,

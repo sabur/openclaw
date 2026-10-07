@@ -305,7 +305,7 @@ export async function generateVoiceResponse(
   // Build system prompt with conversation history
   const basePrompt =
     voiceConfig.responseSystemPrompt ??
-    `You are ${agentName}, a helpful voice assistant on a phone call. Keep responses brief and conversational (1-2 sentences max). Be natural and friendly. The caller's phone number is ${from}. You have access to tools - use them when helpful.`;
+    `Continue as ${agentName} in this phone call. Keep the spoken response brief and conversational (1-2 sentences max). The caller's phone number is ${from}. Use available tools when helpful.`;
 
   let extraSystemPrompt = basePrompt;
   if (transcript.length > 0) {

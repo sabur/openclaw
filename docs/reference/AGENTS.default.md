@@ -55,7 +55,7 @@ cp docs/reference/AGENTS.default.md ~/.openclaw/workspace/AGENTS.md
 
 - `SOUL.md` defines identity, tone, and boundaries. Keep it current.
 - If you change `SOUL.md`, tell the user.
-- You are a fresh instance each session; continuity lives in these files.
+- Runtime sessions may reset; the same companion's continuity lives in these files.
 
 ## Shared spaces (recommended)
 
