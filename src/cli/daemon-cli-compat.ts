@@ -80,12 +80,18 @@ export function resolveLegacyDaemonCliRunnerAccessors(
     return null;
   }
 
-  const runDaemonInstall = aliases.get("runDaemonInstall");
-  const runDaemonRestart = aliases.get("runDaemonRestart");
-  const runDaemonStart = aliases.get("runDaemonStart");
-  const runDaemonStatus = aliases.get("runDaemonStatus");
-  const runDaemonStop = aliases.get("runDaemonStop");
-  const runDaemonUninstall = aliases.get("runDaemonUninstall");
+  // aliases are localName → exportedName; build reverse map for exported-name lookups
+  const reverseAliases = new Map<string, string>();
+  for (const [local, exported] of aliases) {
+    reverseAliases.set(exported, local);
+  }
+
+  const runDaemonInstall = reverseAliases.get("runDaemonInstall");
+  const runDaemonRestart = reverseAliases.get("runDaemonRestart");
+  const runDaemonStart = reverseAliases.get("runDaemonStart");
+  const runDaemonStatus = reverseAliases.get("runDaemonStatus");
+  const runDaemonStop = reverseAliases.get("runDaemonStop");
+  const runDaemonUninstall = reverseAliases.get("runDaemonUninstall");
   if (
     !runDaemonInstall &&
     !runDaemonRestart &&
