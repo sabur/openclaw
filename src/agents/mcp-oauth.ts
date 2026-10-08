@@ -35,6 +35,7 @@ type McpOAuthConfig = {
   scope?: unknown;
   redirectUrl?: unknown;
   clientMetadataUrl?: unknown;
+  identity?: unknown;
 };
 
 /** Persisted OAuth credential presence flags for one MCP server. */
@@ -105,6 +106,9 @@ function buildOAuthClientMetadata(
     token_endpoint_auth_method: "none",
     ...(normalizeOptionalString(config.scope)
       ? { scope: normalizeOptionalString(config.scope) }
+      : {}),
+    ...(normalizeOptionalString(config.identity)
+      ? { identity: normalizeOptionalString(config.identity) }
       : {}),
   };
 }

@@ -412,6 +412,7 @@ const McpServerSchema = z
         scope: z.string().trim().min(1).optional(),
         redirectUrl: HttpUrlSchema.optional(),
         clientMetadataUrl: McpOAuthClientMetadataUrlSchema.optional(),
+        identity: z.string().trim().min(1).optional(),
       })
       .strict()
       .optional(),

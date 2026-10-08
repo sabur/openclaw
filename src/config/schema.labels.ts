@@ -760,6 +760,7 @@ export const FIELD_LABELS: Record<string, string> = {
   "mcp.servers.*.oauth.scope": "MCP OAuth Scope",
   "mcp.servers.*.oauth.redirectUrl": "MCP OAuth Redirect URL",
   "mcp.servers.*.oauth.clientMetadataUrl": "MCP OAuth Client Metadata URL",
+  "mcp.servers.*.oauth.identity": "MCP OAuth Identity",
   "mcp.servers.*.timeout": "MCP Request Timeout",
   "mcp.servers.*.requestTimeoutMs": "MCP Request Timeout (ms)",
   "mcp.servers.*.connectTimeout": "MCP Connect Timeout",

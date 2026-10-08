@@ -57,6 +57,7 @@ export type McpServerConfig = {
     scope?: string;
     redirectUrl?: string;
     clientMetadataUrl?: string;
+    identity?: string;
   };
   /** HTTP TLS verification, disabled only for explicitly trusted private endpoints. */
   sslVerify?: boolean;
