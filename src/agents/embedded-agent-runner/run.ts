@@ -31,6 +31,7 @@ import {
   retireSessionMcpRuntimeForSessionKey,
 } from "../agent-bundle-mcp-tools.js";
 import {
+  resolveAgentContextLimits,
   resolveAgentExecutionContract,
   resolveAgentDir,
   resolveSessionAgentIds,
@@ -2306,6 +2307,9 @@ export async function runEmbeddedAgent(
                   lastCompactionTokensAfter = Math.floor(compactResult.result.tokensAfter);
                 }
                 if (preflightRecovery?.route === "compact_then_truncate") {
+                  const toolResultTruncationEnabled =
+                    resolveAgentContextLimits(params.config, sessionAgentId)
+                      ?.toolResultTruncationEnabled ?? true;
                   const truncResult = await truncateOversizedToolResultsInSession({
                     sessionFile: activeSessionFile,
                     contextWindowTokens: ctxInfo.tokens,
@@ -2318,6 +2322,7 @@ export async function runEmbeddedAgent(
                     sessionKey: params.sessionKey,
                     agentId: sessionAgentId,
                     config: params.config,
+                    truncationEnabled: toolResultTruncationEnabled,
                   });
                   if (truncResult.truncated) {
                     log.info(
@@ -2381,6 +2386,9 @@ export async function runEmbeddedAgent(
                   sessionKey: params.sessionKey,
                   agentId: sessionAgentId,
                   config: params.config,
+                  truncationEnabled:
+                    resolveAgentContextLimits(params.config, sessionAgentId)
+                      ?.toolResultTruncationEnabled ?? true,
                 });
                 if (truncResult.truncated) {
                   log.info(

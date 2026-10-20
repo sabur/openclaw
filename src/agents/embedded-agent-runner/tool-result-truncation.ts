@@ -340,7 +340,11 @@ export function truncateOversizedToolResultsInMessages(
   contextWindowTokens: number,
   maxCharsOverride?: number,
   aggregateMaxCharsOverride?: number,
+  truncationEnabled?: boolean,
 ): { messages: AgentMessage[]; truncatedCount: number } {
+  if (truncationEnabled === false) {
+    return { messages, truncatedCount: 0 };
+  }
   const maxChars = Math.max(
     1,
     maxCharsOverride ?? calculateMaxToolResultChars(contextWindowTokens),
@@ -613,7 +617,20 @@ export function estimateToolResultReductionPotential(params: {
   contextWindowTokens: number;
   maxCharsOverride?: number;
   aggregateMaxCharsOverride?: number;
+  truncationEnabled?: boolean;
 }): ToolResultReductionPotential {
+  if (params.truncationEnabled === false) {
+    return {
+      maxChars: 0,
+      aggregateBudgetChars: 0,
+      toolResultCount: 0,
+      totalToolResultChars: 0,
+      oversizedCount: 0,
+      oversizedReducibleChars: 0,
+      aggregateReducibleChars: 0,
+      maxReducibleChars: 0,
+    };
+  }
   const { messages, contextWindowTokens } = params;
   const maxChars = Math.max(
     1,
@@ -808,7 +825,11 @@ export function truncateOversizedToolResultsInSessionManager(params: {
   sessionId?: string;
   sessionKey?: string;
   agentId?: string;
+  truncationEnabled?: boolean;
 }): { truncated: boolean; truncatedCount: number; reason?: string } {
+  if (params.truncationEnabled === false) {
+    return { truncated: false, truncatedCount: 0, reason: "truncation disabled" };
+  }
   try {
     return truncateOversizedToolResultsInExistingSessionManager(params);
   } catch (err) {
@@ -827,8 +848,11 @@ export async function truncateOversizedToolResultsInSession(params: {
   sessionKey?: string;
   agentId?: string;
   config?: SessionWriteLockAcquireTimeoutConfig;
+  truncationEnabled?: boolean;
 }): Promise<{ truncated: boolean; truncatedCount: number; reason?: string }> {
-  const { sessionFile, contextWindowTokens } = params;
+  if (params.truncationEnabled === false) {
+    return { truncated: false, truncatedCount: 0, reason: "truncation disabled" };
+  }
   let sessionLock: Awaited<ReturnType<typeof acquireSessionWriteLock>> | undefined;
 
   try {

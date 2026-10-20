@@ -529,9 +529,48 @@ export async function runCliTurnCompactionLifecycle(params: {
     }),
   });
   const tokenSnapshot = resolveSessionTokenSnapshot(params.sessionEntry);
-  const currentTokenCount = Math.max(
-    preemptiveCompaction.estimatedPromptTokens,
-    tokenSnapshot ?? 0,
+  // When we have a fresh token snapshot from exo, prefer it over the
+  // preemptive compaction estimate, which can inflate 10x+ by counting
+  // compaction summary messages in the session branch as full content.
+  const hasFreshTokenSnapshot = tokenSnapshot !== undefined;
+  const currentTokenCount = hasFreshTokenSnapshot
+    ? tokenSnapshot
+    : Math.max(preemptiveCompaction.estimatedPromptTokens, tokenSnapshot ?? 0);
+
+  // Fresh exo token count within budget overrides the inflated branch estimate.
+  // The preemptive compaction's estimatedPromptTokens is useful for routing
+  // (truncate vs compact) but the actual provider token count is ground truth.
+  if (hasFreshTokenSnapshot && tokenSnapshot <= preemptiveCompaction.promptBudgetBeforeReserve) {
+    log.debug(
+      `[cli-compaction-guard] skip: fresh tokenSnapshot=${tokenSnapshot} ` +
+        `within budget=${preemptiveCompaction.promptBudgetBeforeReserve} ` +
+        `(preemptive estimate=${preemptiveCompaction.estimatedPromptTokens} ignored — ` +
+        `compaction summary inflation) sessionKey=${params.sessionKey}`,
+    );
+    return params.sessionEntry;
+  }
+
+  const decision =
+    !preemptiveCompaction.shouldCompact &&
+    currentTokenCount <= preemptiveCompaction.promptBudgetBeforeReserve
+      ? "skip"
+      : "compact";
+  log.debug(
+    `[cli-compaction-guard] sessionKey=${params.sessionKey} ` +
+      `shouldCompact=${preemptiveCompaction.shouldCompact} ` +
+      `route=${preemptiveCompaction.route} ` +
+      `estimatedPromptTokens=${preemptiveCompaction.estimatedPromptTokens} ` +
+      `tokenSnapshot=${tokenSnapshot} ` +
+      `hasFreshTokenSnapshot=${hasFreshTokenSnapshot} ` +
+      `totalTokensFresh=${params.sessionEntry?.totalTokensFresh} ` +
+      `totalTokens=${params.sessionEntry?.totalTokens} ` +
+      `currentTokenCount=${currentTokenCount} ` +
+      `promptBudgetBeforeReserve=${preemptiveCompaction.promptBudgetBeforeReserve} ` +
+      `contextTokenBudget=${contextTokenBudget} ` +
+      `reserveTokens=${settingsManager.getCompactionReserveTokens()} ` +
+      `messages=${getSessionBranchMessages(sessionManager).length} ` +
+      `compactionCount=${params.sessionEntry?.compactionCount} ` +
+      `decision=${decision}`,
   );
   if (
     !preemptiveCompaction.shouldCompact &&

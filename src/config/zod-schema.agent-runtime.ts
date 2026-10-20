@@ -299,6 +299,7 @@ export const AgentContextLimitsSchema = z
     memoryGetDefaultLines: z.number().int().min(1).max(5_000).optional(),
     toolResultMaxChars: z.number().int().min(1).max(250_000).optional(),
     postCompactionMaxChars: z.number().int().min(1).max(50_000).optional(),
+    toolResultTruncationEnabled: z.boolean().optional(),
   })
   .strict()
   .optional();

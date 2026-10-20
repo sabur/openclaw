@@ -47,6 +47,7 @@ import { resolveMaxTokensParam } from "./model-max-tokens-params.js";
 import { supportsModelTools } from "./model-tool-support.js";
 import {
   emitModelTransportDebug,
+  emitModelTransportWarn,
   resolveModelPayloadDebugMode,
   resolveModelSseDebugMode,
 } from "./model-transport-debug.js";
@@ -3544,6 +3545,7 @@ function resolveOpenAICompletionsModelMaxTokens(model: OpenAIModeModel): number 
 }
 
 const OPENAI_COMPLETIONS_INPUT_TOKEN_SAFETY_MARGIN = 1.25;
+const OPENAI_COMPLETIONS_LOCAL_SAFETY_MARGIN = 1.0;
 const OPENAI_COMPLETIONS_IMAGE_CHAR_ESTIMATE = 8_000;
 
 // Used only to bound `max_completion_tokens` below the effective context cap
@@ -3552,11 +3554,14 @@ const OPENAI_COMPLETIONS_IMAGE_CHAR_ESTIMATE = 8_000;
 // context rejections; wrong-high here just trims output a little. Estimate the
 // final shaped payload, not the raw context, so compat transforms and dropped
 // replay turns are reflected in the output cap.
-function estimateOpenAICompletionsInputTokens(payload: {
-  messages?: unknown;
-  tools?: unknown;
-  response_format?: unknown;
-}): number {
+function estimateOpenAICompletionsInputTokens(
+  payload: {
+    messages?: unknown;
+    tools?: unknown;
+    response_format?: unknown;
+  },
+  margin?: number,
+): number {
   let adjustedChars = 0;
   adjustedChars += estimateOpenAICompletionsMessagesChars(payload.messages);
   if (Array.isArray(payload.tools) && payload.tools.length > 0) {
@@ -3574,7 +3579,8 @@ function estimateOpenAICompletionsInputTokens(payload: {
     }
   }
   return Math.ceil(
-    (adjustedChars / CHARS_PER_TOKEN_ESTIMATE) * OPENAI_COMPLETIONS_INPUT_TOKEN_SAFETY_MARGIN,
+    (adjustedChars / CHARS_PER_TOKEN_ESTIMATE) *
+      (margin ?? OPENAI_COMPLETIONS_INPUT_TOKEN_SAFETY_MARGIN),
   );
 }
 
@@ -4187,15 +4193,29 @@ export function buildOpenAICompletionsParams(
       clampedMaxTokens !== undefined &&
       effectiveContextTokens !== undefined
     ) {
-      const estimatedInputTokens = estimateOpenAICompletionsInputTokens(params);
+      // Use a tighter safety margin for local/Exo endpoints where the precheck
+      // has already validated the budget with real provider token counts.
+      // The 1.25× margin is meant for remote OpenAI-compatible proxies where
+      // character-to-token ratio is less predictable.
+      const isLocalEndpoint =
+        model.provider === "exo" ||
+        (model.baseUrl &&
+          (model.baseUrl.includes("localhost") || model.baseUrl.includes("127.0.0.1")));
+      const margin = isLocalEndpoint ? 1.0 : OPENAI_COMPLETIONS_INPUT_TOKEN_SAFETY_MARGIN;
+      const estimatedInputTokens = estimateOpenAICompletionsInputTokens(params, margin);
       const remainingBudget = Math.max(1, effectiveContextTokens - estimatedInputTokens - 1);
       if (clampedMaxTokens > remainingBudget) {
+        // Use whatever budget remains — no minimum floor.
+        // If this clamp fires at all, the precheck missed its mark and
+        // compaction should have fired sooner. Log as warn-level telemetry
+        // so the operator knows the precheck/transport estimators diverged.
         clampedMaxTokens = remainingBudget;
-        emitModelTransportDebug(
+        emitModelTransportWarn(
           log,
           `[completions] clamp_max_tokens provider=${model.provider} api=${model.api} ` +
             `model=${model.id} requested=${effectiveMaxTokens} output=${clampedMaxTokens} ` +
-            `effectiveContext=${effectiveContextTokens} estimatedInput=${estimatedInputTokens}`,
+            `effectiveContext=${effectiveContextTokens} estimatedInput=${estimatedInputTokens} ` +
+            `margin=${margin} — precheck/transport estimator divergence`,
         );
       }
     }

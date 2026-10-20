@@ -76,3 +76,8 @@ export function emitModelTransportDebug(log: SubsystemLogger, message: string): 
   }
   log.debug(message);
 }
+
+/** Emits transport warnings unconditionally — visible telemetry for critical clamp events. */
+export function emitModelTransportWarn(log: SubsystemLogger, message: string): void {
+  log.warn(message);
+}

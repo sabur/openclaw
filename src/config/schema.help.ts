@@ -266,6 +266,8 @@ export const FIELD_HELP: Record<string, string> = {
     "Advanced ceiling for a single live tool result before truncation. Leave unset to use the model-context auto cap; explicit values affect both persisted live tool-result writes and overflow-recovery truncation heuristics.",
   "agents.defaults.contextLimits.postCompactionMaxChars":
     "Default max characters retained from AGENTS.md during post-compaction context refresh injection. Lower this to make compaction recovery cheaper, or raise it for agents that depend on longer startup guidance.",
+  "agents.defaults.contextLimits.toolResultTruncationEnabled":
+    "When false, skips all tool result truncation operations across every entry point. Tool results are passed to the model at full length. Use with high-context models (384k+) to avoid losing critical tool output. Default: true (truncation enabled, preserving existing behavior).",
   "agents.list":
     "Explicit list of configured agents with IDs and optional overrides for model, tools, identity, and workspace. Keep IDs stable over time so bindings, approvals, and session routing remain deterministic.",
   "agents.list[].skillsLimits":
@@ -282,6 +284,8 @@ export const FIELD_HELP: Record<string, string> = {
     "Per-agent advanced ceiling for the live tool-result max character budget. Omit to inherit defaults or the model-context auto cap.",
   "agents.list[].contextLimits.postCompactionMaxChars":
     "Per-agent override for the post-compaction AGENTS.md excerpt budget.",
+  "agents.list[].contextLimits.toolResultTruncationEnabled":
+    "Per-agent tool result truncation enabled flag. When false, skips all tool result truncation for this agent. Default: inherits agents.defaults.contextLimits.toolResultTruncationEnabled.",
   "agents.list[].thinkingDefault":
     "Optional per-agent default thinking level. Overrides agents.defaults.thinkingDefault for this agent when no per-message or session override is set.",
   "agents.list[].reasoningDefault":

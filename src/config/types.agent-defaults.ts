@@ -112,6 +112,13 @@ export type AgentContextLimitsConfig = {
   toolResultMaxChars?: number;
   /** Max chars retained from post-compaction AGENTS.md context injection (default: 1800). */
   postCompactionMaxChars?: number;
+  /**
+   * When false, skips ALL tool result truncation operations.
+   * Tool results are passed to the model at full length.
+   * Use with high-context models (384k+) to avoid losing critical tool output.
+   * Default: true (truncation enabled, preserving existing behavior).
+   */
+  toolResultTruncationEnabled?: boolean;
 };
 
 export type AgentRunRetriesConfig = {

@@ -17,7 +17,7 @@ export const PREEMPTIVE_OVERFLOW_ERROR_TEXT =
   "Context overflow: prompt too large for the model (precheck).";
 
 const ESTIMATED_CHARS_PER_TOKEN = 4;
-const TOOL_RESULT_CHARS_PER_TOKEN = 2;
+const TOOL_RESULT_CHARS_PER_TOKEN = 4;
 const JSON_PAYLOAD_CHARS_PER_TOKEN = 3;
 const MESSAGE_BOUNDARY_OVERHEAD_TOKENS = 12;
 const CONTENT_BLOCK_OVERHEAD_TOKENS = 6;
@@ -268,6 +268,7 @@ export function shouldPreemptivelyCompactBeforePrompt(params: {
   contextTokenBudget: number;
   reserveTokens: number;
   toolResultMaxChars?: number;
+  truncationEnabled?: boolean;
   llmBoundaryTokenPressure?: LlmBoundaryTokenPressure;
 }): PreemptiveCompactionDecision {
   let messagesForPressure = params.messages;
@@ -311,6 +312,7 @@ export function shouldPreemptivelyCompactBeforePrompt(params: {
     messages: messagesForPressure,
     contextWindowTokens: params.contextTokenBudget,
     maxCharsOverride: params.toolResultMaxChars,
+    truncationEnabled: params.truncationEnabled,
   });
   const overflowChars = overflowTokens * ESTIMATED_CHARS_PER_TOKEN;
   const truncationBufferChars = TRUNCATION_ROUTE_BUFFER_TOKENS * ESTIMATED_CHARS_PER_TOKEN;

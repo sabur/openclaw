@@ -86,7 +86,11 @@ import {
   materializeBundleMcpToolsForRun,
 } from "../../agent-bundle-mcp-tools.js";
 import { createPreparedEmbeddedAgentSettingsManager } from "../../agent-project-settings.js";
-import { resolveAgentDir, resolveSessionAgentIds } from "../../agent-scope.js";
+import {
+  resolveAgentContextLimits,
+  resolveAgentDir,
+  resolveSessionAgentIds,
+} from "../../agent-scope.js";
 import {
   applyAgentAutoCompactionGuard,
   applyAgentCompactionSettingsFromConfig,
@@ -3550,6 +3554,9 @@ export async function runEmbeddedAttempt(
             cfg: params.config,
             agentId: sessionAgentId,
           });
+          const toolResultTruncationEnabled =
+            resolveAgentContextLimits(params.config, sessionAgentId)?.toolResultTruncationEnabled ??
+            true;
           const truncationResult = truncateOversizedToolResultsInSessionManager({
             sessionManager: activeSessionManager,
             contextWindowTokens: contextTokenBudget,
@@ -3558,6 +3565,7 @@ export async function runEmbeddedAttempt(
             sessionId: params.sessionId,
             sessionKey: params.sessionKey,
             agentId: sessionAgentId,
+            truncationEnabled: toolResultTruncationEnabled,
           });
           if (truncationResult.truncated) {
             preflightRecovery = {
@@ -3865,12 +3873,16 @@ export async function runEmbeddedAttempt(
             cfg: params.config,
             agentId: sessionAgentId,
           });
+          const toolResultTruncationEnabled =
+            resolveAgentContextLimits(params.config, sessionAgentId)?.toolResultTruncationEnabled ??
+            true;
           let promptHistoryMessages = activeSession.messages;
           const promptToolResultTruncation = truncateOversizedToolResultsInMessages(
             activeSession.messages,
             contextTokenBudget,
             promptToolResultMaxChars,
             promptToolResultMaxChars * PROMPT_TOOL_RESULT_AGGREGATE_CAP_MULTIPLIER,
+            toolResultTruncationEnabled,
           );
           if (promptToolResultTruncation.truncatedCount > 0) {
             promptHistoryMessages = promptToolResultTruncation.messages;
@@ -4275,6 +4287,7 @@ export async function runEmbeddedAttempt(
                 contextTokenBudget,
                 reserveTokens,
                 toolResultMaxChars: promptToolResultMaxChars,
+                truncationEnabled: toolResultTruncationEnabled,
                 llmBoundaryTokenPressure: {
                   estimatedPromptTokens: llmBoundaryTokenPressure,
                   source: "llm_boundary_normalized_prompt",
@@ -4314,6 +4327,9 @@ export async function runEmbeddedAttempt(
             );
           }
           if (preemptiveCompaction?.route === "truncate_tool_results_only") {
+            const toolResultTruncationEnabled =
+              resolveAgentContextLimits(params.config, sessionAgentId)
+                ?.toolResultTruncationEnabled ?? true;
             const toolResultMaxChars = resolveLiveToolResultMaxChars({
               contextWindowTokens: contextTokenBudget,
               cfg: params.config,
@@ -4327,6 +4343,7 @@ export async function runEmbeddedAttempt(
               sessionId: params.sessionId,
               sessionKey: params.sessionKey,
               agentId: sessionAgentId,
+              truncationEnabled: toolResultTruncationEnabled,
             });
             if (truncationResult.truncated) {
               preflightRecovery = {
@@ -4388,6 +4405,9 @@ export async function runEmbeddedAttempt(
             if (normalizedReplayMessages !== activeSession.messages) {
               activeSession.agent.state.messages = normalizedReplayMessages;
             }
+            const toolResultTruncationEnabled =
+              resolveAgentContextLimits(params.config, sessionAgentId)
+                ?.toolResultTruncationEnabled ?? true;
             const installProviderPromptHistoryTransform = (): (() => void) => {
               const baseStreamFn = activeSession.agent.streamFn;
               const providerPromptStreamFn = wrapStreamFnWithMessageTransform(
@@ -4398,6 +4418,7 @@ export async function runEmbeddedAttempt(
                     contextTokenBudget,
                     promptToolResultMaxChars,
                     promptToolResultMaxChars * PROMPT_TOOL_RESULT_AGGREGATE_CAP_MULTIPLIER,
+                    toolResultTruncationEnabled,
                   );
                   return providerPromptHistoryTruncation.truncatedCount > 0
                     ? providerPromptHistoryTruncation.messages
