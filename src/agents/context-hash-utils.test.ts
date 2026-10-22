@@ -77,14 +77,20 @@ describe("canonicalizeTools", () => {
       {
         name: "edit",
         description: "Edit",
-        parameters: { type: "object", properties: { path: { type: "string" } } },
+        parameters: {
+          type: "object",
+          properties: { path: { type: "string" } },
+        },
       },
     ];
     const modified: Tool[] = [
       {
         name: "edit",
         description: "Edit",
-        parameters: { type: "object", properties: { path: { type: "integer" } } },
+        parameters: {
+          type: "object",
+          properties: { path: { type: "integer" } },
+        },
       },
     ];
     // Nested schema change should change both toolH and toolSetH
@@ -239,7 +245,12 @@ describe("computeRollingMsgHashes", () => {
         userMsg("find"),
         assistantMsg([
           { type: "text" as const, text: "Checking..." },
-          { type: "toolCall" as const, id: "c1", name: "read", arguments: args },
+          {
+            type: "toolCall" as const,
+            id: "c1",
+            name: "read",
+            arguments: args,
+          },
         ]),
       ];
     }
@@ -297,11 +308,19 @@ describe("computeRollingMsgHashes", () => {
 
   it("detects thinkingSignature mutation", () => {
     const base: Message = assistantMsg([
-      { type: "thinking" as const, thinking: "hmm", thinkingSignature: "ts-v1" },
+      {
+        type: "thinking" as const,
+        thinking: "hmm",
+        thinkingSignature: "ts-v1",
+      },
       { type: "text" as const, text: "answer" },
     ]);
     const mod: Message = assistantMsg([
-      { type: "thinking" as const, thinking: "hmm", thinkingSignature: "ts-v2" },
+      {
+        type: "thinking" as const,
+        thinking: "hmm",
+        thinkingSignature: "ts-v2",
+      },
       { type: "text" as const, text: "answer" },
     ]);
     expect(computeRollingMsgHashes([base]).msgH).not.toBe(computeRollingMsgHashes([mod]).msgH);
@@ -363,7 +382,11 @@ describe("computeContextHashes", () => {
 
   it("is deterministic", () => {
     const input = {
-      context: { systemPrompt: "Be helpful.", tools: [] as Tool[], messages: [userMsg("hi")] },
+      context: {
+        systemPrompt: "Be helpful.",
+        tools: [] as Tool[],
+        messages: [userMsg("hi")],
+      },
       runtimeChannel: "test",
       runId: "run-3",
     };

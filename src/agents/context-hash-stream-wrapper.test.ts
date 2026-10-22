@@ -28,7 +28,10 @@ const testOptions: SimpleStreamOptions = { temperature: 0.7 };
 
 const defaultMeta = { runtimeChannel: "telegram", runId: "run-test" };
 
-function makeStreamFn(): { streamFn: StreamFn; sentinel: AssistantMessageEventStream } {
+function makeStreamFn(): {
+  streamFn: StreamFn;
+  sentinel: AssistantMessageEventStream;
+} {
   const sentinel = new AssistantMessageEventStream();
   const streamFn: StreamFn = () => sentinel;
   return { streamFn, sentinel };
@@ -89,7 +92,10 @@ describe("fingerprintSafeOptions", () => {
   it("omits nested callback/signal entries (key removed)", () => {
     const result = fingerprintSafeOptions({
       temperature: 0.7,
-      extra_body: { myCallback: (() => "x") as any, innerSignal: new AbortController().signal },
+      extra_body: {
+        myCallback: (() => "x") as any,
+        innerSignal: new AbortController().signal,
+      },
     });
     const canon = canonicalizeValue({ temperature: 0.7 });
     expect(result.optionsH).toBe(sha256(canon));
@@ -216,8 +222,18 @@ describe("wrapContextHashStreamFn", () => {
     const log1 = vi.fn();
     const log2 = vi.fn();
 
-    const w1 = wrapContextHashStreamFn({ streamFn: sf1, enabled: true, ...defaultMeta, log: log1 });
-    const w2 = wrapContextHashStreamFn({ streamFn: sf2, enabled: true, ...defaultMeta, log: log2 });
+    const w1 = wrapContextHashStreamFn({
+      streamFn: sf1,
+      enabled: true,
+      ...defaultMeta,
+      log: log1,
+    });
+    const w2 = wrapContextHashStreamFn({
+      streamFn: sf2,
+      enabled: true,
+      ...defaultMeta,
+      log: log2,
+    });
 
     w1(testModel, testContext, { temperature: 0.7, apiKey: "sk-1" });
     w2(testModel, testContext, { temperature: 0.7, apiKey: "sk-2" });
@@ -233,8 +249,18 @@ describe("wrapContextHashStreamFn", () => {
     const log1 = vi.fn();
     const log2 = vi.fn();
 
-    const w1 = wrapContextHashStreamFn({ streamFn: sf1, enabled: true, ...defaultMeta, log: log1 });
-    const w2 = wrapContextHashStreamFn({ streamFn: sf2, enabled: true, ...defaultMeta, log: log2 });
+    const w1 = wrapContextHashStreamFn({
+      streamFn: sf1,
+      enabled: true,
+      ...defaultMeta,
+      log: log1,
+    });
+    const w2 = wrapContextHashStreamFn({
+      streamFn: sf2,
+      enabled: true,
+      ...defaultMeta,
+      log: log2,
+    });
 
     w1(testModel, testContext, { temperature: 0.7 });
     w2(testModel, testContext, { temperature: 0.9 });

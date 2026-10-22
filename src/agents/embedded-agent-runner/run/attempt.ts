@@ -145,6 +145,7 @@ import {
   createCodeModeTools,
   resolveCodeModeConfig,
 } from "../../code-mode.js";
+import { wrapContextHashStreamFn } from "../../context-hash-stream-wrapper.js";
 import { DEFAULT_CONTEXT_TOKENS } from "../../defaults.js";
 import { resolveOpenClawReferencePaths } from "../../docs-path.js";
 import {
@@ -537,7 +538,10 @@ function pluginMetadataSnapshotCoversProvider(
   });
 }
 
-function summarizeMessagePayload(msg: AgentMessage): { textChars: number; imageBlocks: number } {
+function summarizeMessagePayload(msg: AgentMessage): {
+  textChars: number;
+  imageBlocks: number;
+} {
   const content = (msg as { content?: unknown }).content;
   if (typeof content === "string") {
     return { textChars: content.length, imageBlocks: 0 };
@@ -644,7 +648,9 @@ class EmbeddedAttemptPromptErrorWithCleanupTakeoverError extends Error {
   readonly cleanupError: EmbeddedAttemptSessionTakeoverError;
 
   constructor(params: { promptError: unknown; cleanupError: EmbeddedAttemptSessionTakeoverError }) {
-    super(formatErrorMessage(params.promptError), { cause: params.cleanupError });
+    super(formatErrorMessage(params.promptError), {
+      cause: params.cleanupError,
+    });
     this.name = "EmbeddedAttemptSessionTakeoverError";
     this.promptError = params.promptError;
     this.cleanupError = params.cleanupError;
@@ -664,7 +670,10 @@ function isMidTurnPrecheckAssistantError(message: AgentMessage | undefined): boo
   if (!message || message.role !== "assistant") {
     return false;
   }
-  const record = message as unknown as { stopReason?: unknown; errorMessage?: unknown };
+  const record = message as unknown as {
+    stopReason?: unknown;
+    errorMessage?: unknown;
+  };
   return record.stopReason === "error" && record.errorMessage === MID_TURN_PRECHECK_ERROR_MESSAGE;
 }
 
@@ -788,7 +797,11 @@ function collectAttemptExplicitToolAllowlistSources(params: {
     { label: "sandbox tools.allow", allow: params.sandboxToolPolicy?.allow },
     { label: "subagent tools.allow", allow: subagentPolicy?.allow },
     { label: "inherited tools.allow", allow: inheritedToolPolicy?.allow },
-    { label: "runtime toolsAllow", allow: params.toolsAllow, enforceWhenToolsDisabled: true },
+    {
+      label: "runtime toolsAllow",
+      allow: params.toolsAllow,
+      enforceWhenToolsDisabled: true,
+    },
   ]);
 }
 
@@ -1209,7 +1222,10 @@ export async function runEmbeddedAttempt(
       : (() => {
           const allTools = createOpenClawCodingTools({
             agentId: sessionAgentId,
-            ...buildEmbeddedAttemptToolRunContext({ ...params, trace: runTrace }),
+            ...buildEmbeddedAttemptToolRunContext({
+              ...params,
+              trace: runTrace,
+            }),
             exec: {
               ...params.execOverrides,
               config: params.config,
@@ -2611,15 +2627,29 @@ export async function runEmbeddedAttempt(
         agentDir,
         workspaceDir: effectiveWorkspace,
       });
+      // Inner diagnostic wrapper: fingerprints final llm-core Context at the
+      // provider boundary. Wraps the selected provider/base stream first so
+      // every outer transform (auth, signal, text transforms, plugin hooks)
+      // wraps around it and the diagnostic sees exactly what reaches the provider.
+      const diagnosticStreamFn = providerStreamFn
+        ? wrapContextHashStreamFn({
+            streamFn: providerStreamFn,
+            enabled: log.isEnabled("debug"),
+            runtimeChannel: params.messageChannel ?? params.messageProvider ?? "unknown",
+            runId: params.runId,
+            log: (line: string) => log.debug(line),
+          })
+        : undefined;
+      const effectiveProviderStreamFn = diagnosticStreamFn ?? providerStreamFn;
       const streamStrategy = describeEmbeddedAgentStreamStrategy({
         currentStreamFn: defaultSessionStreamFn,
-        providerStreamFn,
+        providerStreamFn: effectiveProviderStreamFn,
         model: params.model,
         resolvedApiKey: params.resolvedApiKey,
       });
       activeSession.agent.streamFn = resolveEmbeddedAgentStreamFn({
         currentStreamFn: defaultSessionStreamFn,
-        providerStreamFn,
+        providerStreamFn: effectiveProviderStreamFn,
         sessionId: params.sessionId,
         promptCacheKey: params.promptCacheKey,
         signal: runAbortController.signal,
@@ -2791,7 +2821,9 @@ export async function runEmbeddedAttempt(
 
       const innerStreamFn = activeSession.agent.streamFn;
       activeSession.agent.streamFn = (model, context, options) => {
-        const signal = runAbortController.signal as AbortSignal & { reason?: unknown };
+        const signal = runAbortController.signal as AbortSignal & {
+          reason?: unknown;
+        };
         if (yieldDetected && signal.aborted && signal.reason === "sessions_yield") {
           return createYieldAbortedResponse(model) as unknown as Awaited<
             ReturnType<typeof innerStreamFn>
@@ -2895,7 +2927,9 @@ export async function runEmbeddedAttempt(
             ? { contextWindowSource: params.contextWindowInfo.source }
             : {}),
           ...(params.contextWindowInfo?.referenceTokens
-            ? { contextWindowReferenceTokens: params.contextWindowInfo.referenceTokens }
+            ? {
+                contextWindowReferenceTokens: params.contextWindowInfo.referenceTokens,
+              }
             : {}),
           trace: runTrace,
           contentCapture: resolveDiagnosticModelContentCapturePolicy(params.config),
@@ -2979,7 +3013,10 @@ export async function runEmbeddedAttempt(
                     return null;
                   }
                   return {
-                    quotaSuspension: { ...entry.quotaSuspension, state: "active" },
+                    quotaSuspension: {
+                      ...entry.quotaSuspension,
+                      state: "active",
+                    },
                   };
                 },
               });
@@ -4280,7 +4317,9 @@ export async function runEmbeddedAttempt(
             : shouldPreemptivelyCompactBeforePrompt({
                 messages: hookMessagesForCurrentPrompt,
                 ...(unwindowedLlmBoundaryMessagesForPrecheck
-                  ? { unwindowedMessages: unwindowedLlmBoundaryMessagesForPrecheck }
+                  ? {
+                      unwindowedMessages: unwindowedLlmBoundaryMessagesForPrecheck,
+                    }
                   : {}),
                 systemPrompt: systemPromptForHook,
                 prompt: llmBoundaryPromptForPrecheck,
@@ -4305,7 +4344,9 @@ export async function runEmbeddedAttempt(
               ...(params.sessionId ? { sessionId: params.sessionId } : {}),
               ...(contextEnginePromptAuthority === "preassembly_may_overflow" &&
               unwindowedContextEngineMessagesForPrecheck
-                ? { unwindowedMessageCount: unwindowedContextEngineMessagesForPrecheck.length }
+                ? {
+                    unwindowedMessageCount: unwindowedContextEngineMessagesForPrecheck.length,
+                  }
                 : {}),
             });
             log.debug(
@@ -4320,7 +4361,9 @@ export async function runEmbeddedAttempt(
                 ...(params.sessionId ? { sessionId: params.sessionId } : {}),
                 ...(contextEnginePromptAuthority === "preassembly_may_overflow" &&
                 unwindowedContextEngineMessagesForPrecheck
-                  ? { unwindowedMessageCount: unwindowedContextEngineMessagesForPrecheck.length }
+                  ? {
+                      unwindowedMessageCount: unwindowedContextEngineMessagesForPrecheck.length,
+                    }
                   : {}),
                 ...(params.sessionFile ? { sessionFile: params.sessionFile } : {}),
               }),
@@ -5046,7 +5089,9 @@ export async function runEmbeddedAttempt(
                 ? { contextWindowSource: params.contextWindowInfo.source }
                 : {}),
               ...(params.contextWindowInfo?.referenceTokens
-                ? { contextWindowReferenceTokens: params.contextWindowInfo.referenceTokens }
+                ? {
+                    contextWindowReferenceTokens: params.contextWindowInfo.referenceTokens,
+                  }
                 : {}),
               resolvedRef:
                 params.runtimePlan?.observability.resolvedRef ??
@@ -5073,7 +5118,9 @@ export async function runEmbeddedAttempt(
                 ? { contextWindowSource: params.contextWindowInfo.source }
                 : {}),
               ...(params.contextWindowInfo?.referenceTokens
-                ? { contextWindowReferenceTokens: params.contextWindowInfo.referenceTokens }
+                ? {
+                    contextWindowReferenceTokens: params.contextWindowInfo.referenceTokens,
+                  }
                 : {}),
               ...buildAgentHookContextChannelFields(params),
             },
