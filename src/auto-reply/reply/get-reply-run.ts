@@ -783,12 +783,7 @@ export async function runPreparedReply(
       : undefined;
     if (
       maybeLevel &&
-      isThinkingLevelSupported({
-        provider,
-        model,
-        level: maybeLevel,
-        catalog: thinkingCatalog,
-      })
+      isThinkingLevelSupported({ provider, model, level: maybeLevel, catalog: thinkingCatalog })
     ) {
       resolvedThinkLevel = maybeLevel;
       prefixedBodyBase = parts.slice(1).join(" ").trim();
@@ -887,11 +882,7 @@ export async function runPreparedReply(
   const shouldHydrateThinkingCatalog =
     !thinkingLevelSupported ||
     (resolvedThinkLevel !== "off" &&
-      !hasResolvedThinkingCatalogEntry({
-        catalog: thinkingCatalog,
-        provider,
-        model,
-      }));
+      !hasResolvedThinkingCatalogEntry({ catalog: thinkingCatalog, provider, model }));
   if (shouldHydrateThinkingCatalog) {
     // Hydrate the runtime model catalog only when the lightweight catalog cannot
     // prove support or lacks reasoning metadata for the selected model. The full
@@ -935,10 +926,7 @@ export async function runPreparedReply(
     providedReplyOperation.phase === "queued" &&
     candidateSessionId === providedReplyOperation.sessionId;
   const sessionIdFinal = sessionId ?? providedReplyOperation?.sessionId ?? crypto.randomUUID();
-  const sessionFilePathOptions = resolveSessionFilePathOptions({
-    agentId,
-    storePath,
-  });
+  const sessionFilePathOptions = resolveSessionFilePathOptions({ agentId, storePath });
   const resolvePreparedSessionState = (): {
     sessionEntry: SessionEntry | undefined;
     sessionId: string;
@@ -1098,11 +1086,7 @@ export async function runPreparedReply(
     const activeSessionId =
       embeddedActiveSessionId ?? replyOperationActiveSessionId ?? preparedSessionState.sessionId;
     if (!activeSessionId || (!embeddedAgentRuntime && !replyOperationActiveSessionId)) {
-      return {
-        activeSessionId: undefined,
-        isActive: false,
-        isStreaming: false,
-      };
+      return { activeSessionId: undefined, isActive: false, isStreaming: false };
     }
     if (isOwnPreDispatchOperationSession(activeSessionId)) {
       return { activeSessionId, isActive: false, isStreaming: false };
@@ -1124,9 +1108,7 @@ export async function runPreparedReply(
     };
   };
   const { activeSessionId, isActive, isStreaming } = resolveQueueBusyState();
-  const activeRunAcceptsCurrentThread = resolveActiveRunAcceptsCurrentThread({
-    isActive,
-  });
+  const activeRunAcceptsCurrentThread = resolveActiveRunAcceptsCurrentThread({ isActive });
   const isHeartbeatRun = opts?.isHeartbeat === true;
   const shouldSteer =
     !isRoomEvent &&

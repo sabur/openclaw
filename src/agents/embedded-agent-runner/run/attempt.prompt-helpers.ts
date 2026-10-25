@@ -113,9 +113,7 @@ export async function resolvePromptBuildHookResult(params: {
   const queuedContext = cachedInjections
     ? {
         queuedInjections: cachedInjections,
-        ...buildPluginAgentTurnPrepareContext({
-          queuedInjections: cachedInjections,
-        }),
+        ...buildPluginAgentTurnPrepareContext({ queuedInjections: cachedInjections }),
       }
     : await drainPluginNextTurnInjectionContext({
         cfg: params.config,

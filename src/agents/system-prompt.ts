@@ -965,10 +965,7 @@ export function buildAgentSystemPrompt(params: {
     availableTools,
     citationsMode: params.memoryCitationsMode,
   });
-  const heartbeatSection = buildHeartbeatSection({
-    isMinimal,
-    heartbeatPrompt,
-  });
+  const heartbeatSection = buildHeartbeatSection({ isMinimal, heartbeatPrompt });
   const docsSection = buildDocsSection({
     docsPath: params.docsPath,
     sourcePath: params.sourcePath,
@@ -1228,10 +1225,7 @@ export function buildAgentSystemPrompt(params: {
       "## Workspace Files (injected)",
       "These user-editable files are loaded by OpenClaw and included below in Project Context.",
       "",
-      ...buildAssistantOutputDirectivesSection({
-        isMinimal,
-        sourceMessageToolOnly,
-      }),
+      ...buildAssistantOutputDirectivesSection({ isMinimal, sourceMessageToolOnly }),
     ];
 
     if (reasoningHint) {
