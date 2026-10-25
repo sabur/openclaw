@@ -137,6 +137,7 @@ let resolveTypingMode: typeof import("./typing-mode.js").resolveTypingMode;
 let buildDirectChatContext: typeof import("./groups.js").buildDirectChatContext;
 let buildGroupChatContext: typeof import("./groups.js").buildGroupChatContext;
 let buildInboundUserContextPrefix: typeof import("./inbound-meta.js").buildInboundUserContextPrefix;
+let buildInboundMetaSystemPrompt: typeof import("./inbound-meta.js").buildInboundMetaSystemPrompt;
 let resolveInboundUserContextPromptJoiner: typeof import("./inbound-meta.js").resolveInboundUserContextPromptJoiner;
 let getActiveReplyRunCount: typeof import("./reply-run-registry.js").getActiveReplyRunCount;
 let replyRunTesting: typeof import("./reply-run-registry.js").testing;
@@ -281,8 +282,11 @@ describe("runPreparedReply media-only handling", () => {
     ({ drainFormattedSystemEvents } = await import("./session-system-events.js"));
     ({ resolveTypingMode } = await import("./typing-mode.js"));
     ({ buildDirectChatContext, buildGroupChatContext } = await import("./groups.js"));
-    ({ buildInboundUserContextPrefix, resolveInboundUserContextPromptJoiner } =
-      await import("./inbound-meta.js"));
+    ({
+      buildInboundMetaSystemPrompt,
+      buildInboundUserContextPrefix,
+      resolveInboundUserContextPromptJoiner,
+    } = await import("./inbound-meta.js"));
     ({ testing: replyRunTesting, getActiveReplyRunCount } =
       await import("./reply-run-registry.js"));
   });
@@ -2430,6 +2434,55 @@ describe("runPreparedReply media-only handling", () => {
     expect(groupContextParams?.sessionCtx?.GroupChannel).toBe("#ops");
     expect(call?.followupRun.run.chatType).toBe("channel");
     expect(call?.followupRun.run.extraSystemPromptStatic).toBe("group:discord:channel:#ops");
+  });
+
+  it("passes projected Provider/Surface/route to inbound-meta builder for system events", async () => {
+    await runPreparedReply(
+      baseParams({
+        opts: { isHeartbeat: true },
+        isNewSession: false,
+        systemSent: true,
+        ctx: {
+          Body: "scheduled wake",
+          RawBody: "scheduled wake",
+          CommandBody: "scheduled wake",
+          Provider: "cron-event",
+          SessionKey: "agent:main:discord:guild-1:channel-1",
+        },
+        sessionCtx: {
+          Body: "scheduled wake",
+          BodyStripped: "scheduled wake",
+          Provider: "cron-event",
+        },
+        sessionEntry: {
+          sessionId: "session-1",
+          updatedAt: 1,
+          systemSent: true,
+          chatType: "channel",
+          channel: "discord",
+          groupId: "guild-1",
+          groupChannel: "#ops",
+          lastChannel: "discord",
+          lastTo: "channel-1",
+          origin: {
+            provider: "discord",
+            surface: "discord",
+            chatType: "channel",
+            to: "channel-1",
+          },
+        } as SessionEntry,
+      }),
+    );
+
+    expect(buildInboundMetaSystemPrompt).toHaveBeenCalledTimes(1);
+    const inboundMetaArgs = vi.mocked(buildInboundMetaSystemPrompt).mock.calls[0];
+    const projectedCtx = inboundMetaArgs[0] as Record<string, unknown>;
+    // Projected context should reflect the session's channel binding, not the raw cron-event provider
+    expect(projectedCtx?.Provider).toBe("discord");
+    expect(projectedCtx?.Surface).toBe("discord");
+    expect(projectedCtx?.ChatType).toBe("channel");
+    // ThreadStarterBody should be undefined (not isNewSession)
+    expect(projectedCtx?.ThreadStarterBody).toBeUndefined();
   });
 
   it.each([

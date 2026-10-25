@@ -210,18 +210,6 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).toContain("Supported directives are stripped before rendering");
   });
 
-  it("omits the heartbeat section when no heartbeat prompt is provided", () => {
-    const prompt = buildAgentSystemPrompt({
-      workspaceDir: "/tmp/openclaw",
-      promptMode: "full",
-      heartbeatPrompt: undefined,
-    });
-
-    expect(prompt).not.toContain("## Heartbeats");
-    expect(prompt).not.toContain("HEARTBEAT_OK");
-    expect(prompt).not.toContain("Read HEARTBEAT.md");
-  });
-
   it("includes safety guardrails in full prompts", () => {
     const prompt = buildAgentSystemPrompt({
       workspaceDir: "/tmp/openclaw",
@@ -1296,6 +1284,41 @@ describe("buildAgentSystemPrompt", () => {
     expect(groupChatPos).toBeGreaterThan(boundaryPos);
     expect(reactionsPos).toBeGreaterThan(boundaryPos);
     expect(voicePos).toBeGreaterThan(boundaryPos);
+  });
+
+  it("places heartbeat section above the cache boundary", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      heartbeatPrompt: "Read HEARTBEAT.md",
+    });
+
+    const heartbeatPos = prompt.indexOf("## Heartbeats");
+    const boundaryPos = prompt.indexOf(SYSTEM_PROMPT_CACHE_BOUNDARY);
+
+    expect(heartbeatPos).toBeGreaterThan(-1);
+    expect(boundaryPos).toBeGreaterThan(-1);
+    expect(heartbeatPos).toBeLessThan(boundaryPos);
+  });
+
+  it("omits heartbeat section in minimal mode even when prompt is provided", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      promptMode: "minimal",
+      heartbeatPrompt: "Read HEARTBEAT.md",
+    });
+
+    expect(prompt).not.toContain("## Heartbeats");
+  });
+
+  it("omits heartbeat section when no heartbeat prompt is provided", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      heartbeatPrompt: undefined,
+    });
+
+    expect(prompt).not.toContain("## Heartbeats");
+    expect(prompt).not.toContain("HEARTBEAT_OK");
+    expect(prompt).not.toContain("Read HEARTBEAT.md");
   });
 });
 

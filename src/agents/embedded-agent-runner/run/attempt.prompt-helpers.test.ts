@@ -45,6 +45,7 @@ import {
   resolvePromptSubmissionSkipReason,
   resolveAttemptMediaTaskSystemPromptAddition,
   resolvePromptBuildHookResult,
+  shouldIncludeHeartbeatPromptSection,
 } from "./attempt.prompt-helpers.js";
 
 describe("resolveAttemptMediaTaskSystemPromptAddition", () => {
@@ -281,5 +282,110 @@ describe("resolvePromptBuildHookResult drain cache", () => {
     });
 
     expect(hostHookStateMocks.drainPluginNextTurnInjectionContext).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("shouldIncludeHeartbeatPromptSection", () => {
+  it("returns true for default agent with heartbeat config", () => {
+    const result = shouldIncludeHeartbeatPromptSection({
+      config: {
+        agents: {
+          list: [
+            {
+              id: "default",
+              default: true,
+              heartbeat: {
+                prompt: "Read HEARTBEAT.md",
+                every: "30m",
+              },
+            },
+          ],
+        },
+      },
+      agentId: "default",
+      defaultAgentId: "default",
+      isDefaultAgent: true,
+    });
+    expect(result).toBe(true);
+  });
+
+  it("returns false for non-default agent", () => {
+    const result = shouldIncludeHeartbeatPromptSection({
+      config: {
+        agents: {
+          list: [
+            {
+              id: "default",
+              default: true,
+              heartbeat: {
+                prompt: "Read HEARTBEAT.md",
+                every: "30m",
+              },
+            },
+          ],
+        },
+      },
+      agentId: "custom",
+      defaultAgentId: "default",
+      isDefaultAgent: false,
+    });
+    expect(result).toBe(false);
+  });
+
+  it("returns false when heartbeat cadence is disabled (every empty)", () => {
+    const result = shouldIncludeHeartbeatPromptSection({
+      config: {
+        agents: {
+          list: [
+            {
+              id: "default",
+              default: true,
+              heartbeat: {
+                prompt: "Read HEARTBEAT.md",
+                every: "",
+              },
+            },
+          ],
+        },
+      },
+      agentId: "default",
+      defaultAgentId: "default",
+      isDefaultAgent: true,
+    });
+    expect(result).toBe(false);
+  });
+
+  it("returns false when includeSystemPromptSection is false", () => {
+    const result = shouldIncludeHeartbeatPromptSection({
+      config: {
+        agents: {
+          list: [
+            {
+              id: "default",
+              default: true,
+              heartbeat: {
+                prompt: "Read HEARTBEAT.md",
+                every: "30m",
+                includeSystemPromptSection: false,
+              },
+            },
+          ],
+        },
+      },
+      agentId: "default",
+      defaultAgentId: "default",
+      isDefaultAgent: true,
+    });
+    expect(result).toBe(false);
+  });
+
+  it("returns false when no heartbeat config exists", () => {
+    const result = shouldIncludeHeartbeatPromptSection({
+      config: {},
+      agentId: "default",
+      defaultAgentId: "default",
+      isDefaultAgent: true,
+    });
+    expect(result).toBe(false);
   });
 });
