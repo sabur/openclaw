@@ -965,6 +965,7 @@ export function buildAgentSystemPrompt(params: {
     availableTools,
     citationsMode: params.memoryCitationsMode,
   });
+  const heartbeatSection = buildHeartbeatSection({ isMinimal, heartbeatPrompt });
   const docsSection = buildDocsSection({
     docsPath: params.docsPath,
     sourcePath: params.sourcePath,
@@ -1022,6 +1023,7 @@ export function buildAgentSystemPrompt(params: {
     includeMemorySection: params.includeMemorySection,
     memoryCitationsMode: params.memoryCitationsMode,
     memorySection,
+    heartbeatSection,
     acpEnabled,
     stableContextFiles: contextFiles.stable,
   });
@@ -1255,6 +1257,8 @@ export function buildAgentSystemPrompt(params: {
       );
     }
 
+    lines.push(...heartbeatSection);
+
     lines.push(SYSTEM_PROMPT_CACHE_BOUNDARY);
     return lines.filter(Boolean).join("\n");
   });
@@ -1323,8 +1327,6 @@ export function buildAgentSystemPrompt(params: {
   if (providerDynamicSuffix) {
     lines.push(providerDynamicSuffix, "");
   }
-
-  lines.push(...buildHeartbeatSection({ isMinimal, heartbeatPrompt }));
 
   lines.push(
     "## Runtime",

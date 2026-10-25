@@ -30,7 +30,6 @@ import { buildActiveVideoGenerationTaskPromptContextForSession } from "../../vid
 import { buildEmbeddedCompactionRuntimeContext } from "../compaction-runtime-context.js";
 import { resolveContextEngineCapabilities } from "../context-engine-capabilities.js";
 import { log } from "../logger.js";
-import { shouldInjectHeartbeatPromptForTrigger } from "./trigger-policy.js";
 import type { EmbeddedRunAttemptParams } from "./types.js";
 
 export type PromptBuildHookRunner = {
@@ -230,16 +229,24 @@ export function resolvePromptModeForSession(sessionKey?: string): "minimal" | "f
  * heartbeat prompt contribution. Non-default agents and non-heartbeat triggers
  * keep their normal prompt shape.
  */
-export function shouldInjectHeartbeatPrompt(params: {
+/**
+ * Determines whether a heartbeat-capable default agent should include the
+ * Heartbeats section in its system prompt. The decision is based on session
+ * capability (heartbeat config present with cadence > 0), not per-run trigger,
+ * so the stable prompt prefix remains byte-identical across all trigger types.
+ *
+ * The section wording is already conditional ("If the current user message is
+ * a heartbeat poll..."), so including it for ordinary turns does not label
+ * them as heartbeat polls.
+ */
+export function shouldIncludeHeartbeatPromptSection(params: {
   config?: OpenClawConfig;
   agentId?: string;
   defaultAgentId?: string;
   isDefaultAgent: boolean;
-  trigger?: EmbeddedRunAttemptParams["trigger"];
 }): boolean {
   return (
     params.isDefaultAgent &&
-    shouldInjectHeartbeatPromptForTrigger(params.trigger) &&
     Boolean(
       resolveHeartbeatPromptForSystemPrompt({
         config: params.config,

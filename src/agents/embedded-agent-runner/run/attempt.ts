@@ -375,7 +375,7 @@ import {
   resolvePromptModeForSession,
   resolvePromptSubmissionSkipReason,
   shouldWarnOnOrphanedUserRepair,
-  shouldInjectHeartbeatPrompt,
+  shouldIncludeHeartbeatPromptSection,
 } from "./attempt.prompt-helpers.js";
 import { steerActiveSessionWithOptionalDeliveryWait } from "./attempt.queue-message.js";
 import {
@@ -488,7 +488,7 @@ export {
   resolvePromptBuildHookResult,
   resolvePromptModeForSession,
   shouldWarnOnOrphanedUserRepair,
-  shouldInjectHeartbeatPrompt,
+  shouldIncludeHeartbeatPromptSection,
 } from "./attempt.prompt-helpers.js";
 export {
   persistSessionsYieldContextMessage,
@@ -1849,12 +1849,11 @@ export async function runEmbeddedAttempt(
       cwd: effectiveCwd,
       moduleUrl: import.meta.url,
     });
-    const heartbeatPrompt = shouldInjectHeartbeatPrompt({
+    const heartbeatPrompt = shouldIncludeHeartbeatPromptSection({
       config: params.config,
       agentId: sessionAgentId,
       defaultAgentId,
       isDefaultAgent,
-      trigger: params.trigger,
     })
       ? resolveHeartbeatPromptForSystemPrompt({
           config: params.config,
