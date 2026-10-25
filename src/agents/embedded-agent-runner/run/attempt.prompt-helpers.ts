@@ -113,7 +113,9 @@ export async function resolvePromptBuildHookResult(params: {
   const queuedContext = cachedInjections
     ? {
         queuedInjections: cachedInjections,
-        ...buildPluginAgentTurnPrepareContext({ queuedInjections: cachedInjections }),
+        ...buildPluginAgentTurnPrepareContext({
+          queuedInjections: cachedInjections,
+        }),
       }
     : await drainPluginNextTurnInjectionContext({
         cfg: params.config,
@@ -224,11 +226,6 @@ export function resolvePromptModeForSession(sessionKey?: string): "minimal" | "f
   return isSubagentSessionKey(sessionKey) || isCronSessionKey(sessionKey) ? "minimal" : "full";
 }
 
-/**
- * Determines whether the default agent's heartbeat run should include the
- * heartbeat prompt contribution. Non-default agents and non-heartbeat triggers
- * keep their normal prompt shape.
- */
 /**
  * Determines whether a heartbeat-capable default agent should include the
  * Heartbeats section in its system prompt. The decision is based on session

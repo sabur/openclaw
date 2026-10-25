@@ -138,7 +138,11 @@ describe("resolvePromptSubmissionSkipReason", () => {
         prompt: "   ",
         messages: [
           { role: "system", content: "runtime-only policy" },
-          { role: "toolResult", content: "old tool output", toolCallId: "call-1" },
+          {
+            role: "toolResult",
+            content: "old tool output",
+            toolCallId: "call-1",
+          },
         ],
         imageCount: 0,
       }),
@@ -252,12 +256,22 @@ describe("resolvePromptBuildHookResult drain cache", () => {
 
     const hookCtx = { runId: "run-evict-test", sessionKey: "agent:main:main" };
 
-    await resolvePromptBuildHookResult({ config: {}, prompt: "hi", messages: [], hookCtx });
+    await resolvePromptBuildHookResult({
+      config: {},
+      prompt: "hi",
+      messages: [],
+      hookCtx,
+    });
     expect(hostHookStateMocks.drainPluginNextTurnInjectionContext).toHaveBeenCalledTimes(1);
 
     forgetPromptBuildDrainCacheForRun("run-evict-test");
 
-    await resolvePromptBuildHookResult({ config: {}, prompt: "hi", messages: [], hookCtx });
+    await resolvePromptBuildHookResult({
+      config: {},
+      prompt: "hi",
+      messages: [],
+      hookCtx,
+    });
     expect(hostHookStateMocks.drainPluginNextTurnInjectionContext).toHaveBeenCalledTimes(2);
   });
 
@@ -379,13 +393,13 @@ describe("shouldIncludeHeartbeatPromptSection", () => {
     expect(result).toBe(false);
   });
 
-  it("returns false when no heartbeat config exists", () => {
+  it("returns true for default main agent even without explicit heartbeat config (inherits defaults)", () => {
     const result = shouldIncludeHeartbeatPromptSection({
       config: {},
-      agentId: "default",
-      defaultAgentId: "default",
+      agentId: "main",
+      defaultAgentId: "main",
       isDefaultAgent: true,
     });
-    expect(result).toBe(false);
+    expect(result).toBe(true);
   });
 });
