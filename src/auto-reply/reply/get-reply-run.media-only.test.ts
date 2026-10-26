@@ -2405,6 +2405,7 @@ describe("runPreparedReply media-only handling", () => {
           groupChannel: "#ops",
           lastChannel: "discord",
           lastTo: "channel-1",
+          lastAccountId: "account-discord-1",
           origin: {
             provider: "discord",
             surface: "discord",
@@ -2464,6 +2465,7 @@ describe("runPreparedReply media-only handling", () => {
           groupChannel: "#ops",
           lastChannel: "discord",
           lastTo: "channel-1",
+          lastAccountId: "account-discord-1",
           origin: {
             provider: "discord",
             surface: "discord",
@@ -2483,6 +2485,7 @@ describe("runPreparedReply media-only handling", () => {
     expect(projectedCtx?.ChatType).toBe("channel");
     expect(projectedCtx?.OriginatingChannel).toBe("discord");
     expect(projectedCtx?.OriginatingTo).toBe("channel-1");
+    expect(projectedCtx?.AccountId).toBe("account-discord-1");
     // ThreadStarterBody should be undefined (not isNewSession)
     expect(projectedCtx?.ThreadStarterBody).toBeUndefined();
   });
