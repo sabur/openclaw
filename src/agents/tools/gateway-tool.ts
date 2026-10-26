@@ -111,6 +111,22 @@ function getSnapshotConfig(snapshot: unknown): Record<string, unknown> {
   return config as Record<string, unknown>;
 }
 
+/**
+ * Drill into a nested object using a dot path (e.g. "plugins.entries.forge.config").
+ * Returns the value at that path, or undefined if not found.
+ */
+function resolveConfigPath(obj: unknown, dotPath: string): unknown {
+  const keys = dotPath.split(".");
+  let current: unknown = obj;
+  for (const key of keys) {
+    if (!current || typeof current !== "object" || Array.isArray(current)) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+  return current;
+}
+
 // Direct RPC callers need the validated config echoed after writes; the
 // agent-facing gateway tool does not, and replaying it bloats transcripts.
 function stripConfigWriteResultPayload(result: unknown): unknown {
@@ -367,7 +383,7 @@ const GatewayToolSchema = Type.Object({
   continuationMessage: Type.Optional(Type.String()),
   // config.get, config.schema.lookup, config.apply, update.run
   ...gatewayCallOptionSchemaProperties(),
-  // config.schema.lookup
+  // config.get (optional subtree), config.schema.lookup (required)
   path: Type.Optional(Type.String()),
   // config.apply, config.patch
   raw: Type.Optional(Type.String()),
@@ -391,7 +407,7 @@ export function createGatewayTool(opts?: {
     label: "Gateway",
     name: "gateway",
     description:
-      "Gateway restart/config/update. Before config edits, use config.schema.lookup with targeted dot path. Prefer config.patch for partial merge; config.apply only full replace. For config.patch that intentionally removes array entries, pass replacePaths with the exact affected array path. Writes hot-reload or restart as needed. Always pass human `note` for post-restart delivery. If post-restart work must continue internally, pass one-shot `continuationMessage`; visible follow-up from that turn must use the message tool. Do not write restart sentinel files directly.",
+      "Gateway restart/config/update. Before config edits, use config.schema.lookup with targeted dot path. Use config.get with an optional path parameter to fetch a specific config subtree instead of the entire config. Prefer config.patch for partial merge; config.apply only full replace. For config.patch that intentionally removes array entries, pass replacePaths with the exact affected array path. Writes hot-reload or restart as needed. Always pass human `note` for post-restart delivery. If post-restart work must continue internally, pass one-shot `continuationMessage`; visible follow-up from that turn must use the message tool. Do not write restart sentinel files directly.",
     parameters: GatewayToolSchema,
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
@@ -499,6 +515,23 @@ export function createGatewayTool(opts?: {
 
       if (action === "config.get") {
         const result = await callGatewayTool("config.get", gatewayOpts, {});
+        // If a path is provided, drill into the config subtree and return only that
+        const getPath = readStringParam(params, "path", { required: false });
+        if (getPath) {
+          const snapshot = result as Record<string, unknown>;
+          const configRoot = (snapshot.config ?? snapshot.parsed) as
+            | Record<string, unknown>
+            | undefined;
+          const subtree = configRoot ? resolveConfigPath(configRoot, getPath) : undefined;
+          return jsonResult({
+            ok: subtree !== undefined,
+            path: getPath,
+            result: subtree ?? null,
+            ...(subtree === undefined
+              ? { code: "path_not_found", message: `Config path "${getPath}" not found` }
+              : {}),
+          });
+        }
         return jsonResult({ ok: true, result });
       }
       if (action === "config.schema.lookup") {
