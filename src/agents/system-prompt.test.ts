@@ -1192,11 +1192,7 @@ describe("buildAgentSystemPrompt", () => {
         containerWorkspaceDir: "/workspace",
         workspaceAccess: "ro",
         agentWorkspaceMount: "/agent",
-        elevated: {
-          allowed: true,
-          defaultLevel: "on",
-          fullAccessAvailable: true,
-        },
+        elevated: { allowed: true, defaultLevel: "on", fullAccessAvailable: true },
       },
     });
 
@@ -1314,6 +1310,17 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).not.toContain("## Heartbeats");
   });
 
+  it("omits heartbeat section when no heartbeat prompt is provided", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      heartbeatPrompt: undefined,
+    });
+
+    expect(prompt).not.toContain("## Heartbeats");
+    expect(prompt).not.toContain("HEARTBEAT_OK");
+    expect(prompt).not.toContain("Read HEARTBEAT.md");
+  });
+
   it("keeps heartbeat section memo keys isolated: enabled and disabled prompts differ", () => {
     const enabled = buildAgentSystemPrompt({
       workspaceDir: "/tmp/openclaw",
@@ -1327,17 +1334,6 @@ describe("buildAgentSystemPrompt", () => {
     expect(enabled).toContain("## Heartbeats");
     expect(disabled).not.toContain("## Heartbeats");
     expect(enabled).not.toBe(disabled);
-  });
-
-  it("omits heartbeat section when no heartbeat prompt is provided", () => {
-    const prompt = buildAgentSystemPrompt({
-      workspaceDir: "/tmp/openclaw",
-      heartbeatPrompt: undefined,
-    });
-
-    expect(prompt).not.toContain("## Heartbeats");
-    expect(prompt).not.toContain("HEARTBEAT_OK");
-    expect(prompt).not.toContain("Read HEARTBEAT.md");
   });
 });
 
@@ -1358,9 +1354,7 @@ describe("buildAgentBootstrapSystemContext", () => {
   });
 
   it("uses limited bootstrap wording for constrained user-facing runs", () => {
-    const prompt = buildAgentBootstrapSystemContext({
-      bootstrapMode: "limited",
-    }).join("\n");
+    const prompt = buildAgentBootstrapSystemContext({ bootstrapMode: "limited" }).join("\n");
 
     expect(prompt).toContain("## Bootstrap Pending");
     expect(prompt).toContain("cannot safely complete the full BOOTSTRAP.md workflow here");
