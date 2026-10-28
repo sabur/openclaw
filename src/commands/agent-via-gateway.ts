@@ -1,5 +1,4 @@
-// Gateway-first agent CLI implementation with embedded fallback for local/runtime failures.
-import { randomUUID } from "node:crypto";
+// Gateway-first agent CLI implementation with explicit --local embedded execution.
 import { resolveTimerTimeoutMs } from "@openclaw/normalization-core/number-coercion";
 import { normalizeOptionalString } from "@openclaw/normalization-core/string-coerce";
 import {
@@ -56,11 +55,6 @@ type GatewayAgentResponse = {
 };
 
 const NO_GATEWAY_TIMEOUT_MS = 2_147_000_000;
-const EMBEDDED_FALLBACK_META = {
-  transport: "embedded",
-  fallbackFrom: "gateway",
-} as const;
-const GATEWAY_TIMEOUT_FALLBACK_SESSION_PREFIX = "gateway-fallback-";
 const GATEWAY_TRANSIENT_CONNECT_RETRY_DELAYS_MS = [1_000, 2_000, 5_000, 10_000, 15_000] as const;
 
 type AgentCliOpts = {
@@ -544,52 +538,6 @@ function returnAfterSignalExit<T>(
   return exitForReceivedSignal(signal, runtime) ? undefined : value;
 }
 
-function createGatewayTimeoutFallbackSessionId(): string {
-  return `${GATEWAY_TIMEOUT_FALLBACK_SESSION_PREFIX}${randomUUID()}`;
-}
-
-function createGatewayTimeoutFallbackSession(agentId?: string): {
-  sessionId: string;
-  sessionKey: string;
-} {
-  const sessionId = createGatewayTimeoutFallbackSessionId();
-  return {
-    sessionId,
-    sessionKey: `agent:${normalizeAgentId(agentId)}:explicit:${sessionId.trim()}`,
-  };
-}
-
-async function resolveAgentIdForGatewayTimeoutFallback(
-  opts: AgentCliOpts,
-): Promise<string | undefined> {
-  const explicitSessionKey = opts.sessionKey?.trim();
-  if (classifySessionKeyShape(explicitSessionKey) === "agent") {
-    return resolveAgentIdFromSessionKey(explicitSessionKey);
-  }
-  if (isUnscopedSessionKeySentinel(explicitSessionKey)) {
-    return resolveDefaultAgentId(await getGatewayDispatchConfig());
-  }
-
-  const agentIdRaw = opts.agent?.trim();
-  if (agentIdRaw) {
-    return normalizeAgentId(agentIdRaw);
-  }
-
-  if (!opts.to && !opts.sessionId) {
-    return undefined;
-  }
-  const cfg = await getGatewayDispatchConfig();
-  const { resolveSessionKeyForRequest } = await loadAgentSessionModule();
-  const resolvedSessionKey = resolveSessionKeyForRequest({
-    cfg,
-    to: opts.to,
-    sessionId: opts.sessionId,
-  }).sessionKey;
-  return classifySessionKeyShape(resolvedSessionKey) === "agent"
-    ? resolveAgentIdFromSessionKey(resolvedSessionKey)
-    : undefined;
-}
-
 function buildGatewayJsonResponse(response: GatewayAgentResponse): GatewayAgentResponse {
   const deliveryStatus = response.result?.deliveryStatus;
   if (deliveryStatus === undefined) {
@@ -816,7 +764,7 @@ async function agentViaGatewayCommandWithTransientRetries(
         throw err;
       }
       runtime.error?.(
-        `Gateway agent connection closed during handshake; retrying in ${retryDelayMs}ms before embedded fallback.`,
+        `Gateway agent connection closed during handshake; retrying in ${retryDelayMs}ms before failing.`,
       );
       await delayMs(retryDelayMs, signalBridge.signal);
     }
@@ -836,18 +784,22 @@ export async function agentCliCommand(
     ? dispatchOpts
     : { ...dispatchOpts, runId: randomIdempotencyKey() };
   const signalBridge = createAgentCliSignalBridge(resolveAgentCliProcessLike(deps));
-  const localOpts = {
-    ...gatewayDispatchOpts,
-    agentId: gatewayDispatchOpts.agent,
-    replyAccountId: gatewayDispatchOpts.replyAccount,
-    cleanupBundleMcpOnRunEnd: true,
-    cleanupCliLiveSessionOnRunEnd: true,
-    abortSignal: signalBridge.signal,
-  };
   try {
     if (dispatchOpts.local === true) {
       const agentCommand = await loadEmbeddedAgentCommand();
-      const result = await agentCommand(localOpts, runtime, deps);
+      const result = await agentCommand(
+        {
+          ...gatewayDispatchOpts,
+          agentId: gatewayDispatchOpts.agent,
+          replyAccountId: gatewayDispatchOpts.replyAccount,
+          cleanupBundleMcpOnRunEnd: true,
+          cleanupCliLiveSessionOnRunEnd: true,
+          oneShotCliRun: true,
+          abortSignal: signalBridge.signal,
+        },
+        runtime,
+        deps,
+      );
       return returnAfterSignalExit(result, signalBridge.getReceivedSignal(), runtime);
     }
 
@@ -865,52 +817,13 @@ export async function agentCliCommand(
         }
         throw err;
       }
-      if (isGatewayAgentTimeoutError(err)) {
-        if (isControlCommandThatMustNotFallback(dispatchOpts)) {
-          throw err;
-        }
-        const fallbackAgentId = await resolveAgentIdForGatewayTimeoutFallback(dispatchOpts);
-        const fallbackSession = createGatewayTimeoutFallbackSession(fallbackAgentId);
+      const failureHint = resolveGatewayAgentFailureHint(err);
+      if (failureHint) {
         runtime.error?.(
-          `EMBEDDED FALLBACK: Gateway agent timed out; running embedded agent with fresh session ${fallbackSession.sessionId}: ${String(err)}`,
+          `Gateway agent call ${failureHint}; the Gateway may still be running this turn. Check \`openclaw gateway status\` and the session transcript before retrying or rerunning with --local, so the turn does not execute twice.`,
         );
-        const agentCommand = await loadEmbeddedAgentCommand();
-        const result = await agentCommand(
-          {
-            ...localOpts,
-            sessionId: fallbackSession.sessionId,
-            sessionKey: fallbackSession.sessionKey,
-            runId: fallbackSession.sessionId,
-            resultMetaOverrides: {
-              ...EMBEDDED_FALLBACK_META,
-              fallbackReason: "gateway_timeout",
-              fallbackSessionId: fallbackSession.sessionId,
-              fallbackSessionKey: fallbackSession.sessionKey,
-            },
-          },
-          runtime,
-          deps,
-        );
-        return returnAfterSignalExit(result, signalBridge.getReceivedSignal(), runtime);
       }
-
-      if (!isGatewayAgentEmbeddedFallbackError(err)) {
-        throw err;
-      }
-
-      runtime.error?.(
-        `EMBEDDED FALLBACK: Gateway agent failed; running embedded agent: ${String(err)}`,
-      );
-      const agentCommand = await loadEmbeddedAgentCommand();
-      const result = await agentCommand(
-        {
-          ...localOpts,
-          resultMetaOverrides: EMBEDDED_FALLBACK_META,
-        },
-        runtime,
-        deps,
-      );
-      return returnAfterSignalExit(result, signalBridge.getReceivedSignal(), runtime);
+      throw err;
     }
   } catch (err) {
     if (isAbortError(err) && exitForReceivedSignal(signalBridge.getReceivedSignal(), runtime)) {

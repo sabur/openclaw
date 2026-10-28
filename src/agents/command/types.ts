@@ -136,7 +136,6 @@ export type AgentCommandOpts = {
   /** Force long-lived CLI live session teardown when a one-shot local run completes. */
   cleanupCliLiveSessionOnRunEnd?: boolean;
   /** Internal local CLI callers can annotate result metadata before JSON/text output. */
-  resultMetaOverrides?: AgentCommandResultMetaOverrides;
   /** Called when the actual run model is selected, including fallback retries. */
   onActiveModelSelected?: (ctx: { provider: string; model: string }) => void;
   /** Internal one-shot model probe mode: no tools, no workspace/chat prompt policy. */
@@ -152,7 +151,7 @@ export type AgentCommandOpts = {
 /** Restricted option surface for external ingress callsites. */
 export type AgentCommandIngressOpts = Omit<
   AgentCommandOpts,
-  "senderIsOwner" | "allowModelOverride" | "resultMetaOverrides"
+  "senderIsOwner" | "allowModelOverride"
 > & {
   /** Trusted sender identity bit for command/channel-action auth; defaults false for ingress. */
   senderIsOwner?: boolean;
