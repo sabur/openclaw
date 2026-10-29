@@ -12,6 +12,7 @@ import {
 import type { startGatewayServer } from "../../gateway/server.js";
 import { formatErrorMessage } from "../../infra/errors.js";
 import { acquireGatewayLock } from "../../infra/gateway-lock.js";
+import { setHeartbeatsEnabled } from "../../infra/heartbeat-wake.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import { createLazyImportLoader } from "../../shared/lazy-promise.js";
@@ -668,6 +669,10 @@ export async function runGatewayLoop(params: {
       return;
     }
     shuttingDown = true;
+    // Disable heartbeat scheduler before shutdown to prevent new session
+    // creation during the restart window. The new lifecycle's
+    // startHeartbeatRunner defaults to enabled.
+    setHeartbeatsEnabled(false);
     const isRestart = action === "restart";
     gatewayLog.info(`received ${signal}; ${isRestart ? "restarting" : "shutting down"}`);
     if (isRestart) {
@@ -803,6 +808,11 @@ export async function runGatewayLoop(params: {
         resetAllLanes,
         resetGatewayRestartStateForInProcessRestart,
       } = await loadGatewayLifecycleRuntimeModule();
+      // Re-enable heartbeat scheduler for the new lifecycle.
+      // setHeartbeatsEnabled(false) was called during shutdown to prevent
+      // new session creation during the restart window. Since this is an
+      // in-process restart, the module-level variable persists.
+      setHeartbeatsEnabled(true);
       resetAllLanes();
       clearRuntimeConfigSnapshot();
       resetGatewayRestartStateForInProcessRestart();
