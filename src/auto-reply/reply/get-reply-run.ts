@@ -17,6 +17,7 @@ import { resolveFastModeState } from "../../agents/fast-mode.js";
 import { runAgentHarnessBeforeMessageWriteHook } from "../../agents/harness/hook-helpers.js";
 import { resolveAgentHarnessPolicy } from "../../agents/harness/policy.js";
 import { listOpenAIAuthProfileProvidersForAgentRuntime } from "../../agents/openai-routing.js";
+import { resolvePromptOwnerNumbers } from "../../agents/resolve-prompt-owner-union.js";
 import { resolveIngressWorkspaceOverrideForSpawnedRun } from "../../agents/spawned-context.js";
 import type { SilentReplyPromptMode } from "../../agents/system-prompt.types.js";
 import { normalizeChatType } from "../../channels/chat-type.js";
@@ -1330,10 +1331,13 @@ export async function runPreparedReply(
           : {}),
       },
       timeoutMs,
-      runTimeoutOverrideMs:
-        opts?.timeoutOverrideSeconds !== undefined ? timeoutMs : undefined,
+      runTimeoutOverrideMs: opts?.timeoutOverrideSeconds !== undefined ? timeoutMs : undefined,
       blockReplyBreak: resolvedBlockStreamingBreak,
-      ownerNumbers: command.ownerList.length > 0 ? command.ownerList : undefined,
+      ownerNumbers: resolvePromptOwnerNumbers({
+        sessionKey,
+        config: cfg,
+        fallbackOwnerNumbers: command.ownerList.length > 0 ? command.ownerList : undefined,
+      }),
       inputProvenance,
       extraSystemPrompt: extraSystemPromptParts.join("\n\n") || undefined,
       sourceReplyDeliveryMode,

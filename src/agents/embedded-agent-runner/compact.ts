@@ -96,9 +96,10 @@ import { isFallbackSummaryError, runWithModelFallback } from "../model-fallback.
 import { supportsModelTools } from "../model-tool-support.js";
 import { ensureOpenClawModelsJson } from "../models-config.js";
 import { wrapStreamFnTextTransforms } from "../plugin-text-transforms.js";
-import { applyPreparedRuntimeAuthToModel } from "../provider-request-config.js";
 import { resolveAgentPromptSurfaceForSessionKey } from "../prompt-surface.js";
+import { applyPreparedRuntimeAuthToModel } from "../provider-request-config.js";
 import { registerProviderStreamForModel } from "../provider-stream.js";
+import { resolvePromptOwnerNumbers } from "../resolve-prompt-owner-union.js";
 import { collectRuntimeChannelCapabilities } from "../runtime-capabilities.js";
 import { buildAgentRuntimePlan } from "../runtime-plan/build.js";
 import type { AgentRuntimePlan } from "../runtime-plan/types.js";
@@ -1091,7 +1092,11 @@ async function compactEmbeddedAgentSessionDirectOnce(
         defaultThinkLevel,
         reasoningLevel: params.reasoningLevel ?? "off",
         extraSystemPrompt: params.extraSystemPrompt,
-        ownerNumbers: params.ownerNumbers,
+        ownerNumbers: resolvePromptOwnerNumbers({
+          sessionKey: params.sessionKey,
+          config: params.config,
+          fallbackOwnerNumbers: params.ownerNumbers,
+        }),
         reasoningTagHint,
         heartbeatPrompt: resolveHeartbeatPromptForSystemPrompt({
           config: params.config,

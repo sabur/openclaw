@@ -65,6 +65,7 @@ import { composeSystemPromptWithHookContext } from "../embedded-agent-runner/run
 import { buildCurrentInboundPrompt } from "../embedded-agent-runner/run/runtime-context-prompt.js";
 import { resolveHeartbeatPromptForSystemPrompt } from "../heartbeat-system-prompt.js";
 import { applyPluginTextReplacements } from "../plugin-text-transforms.js";
+import { resolvePromptOwnerNumbers } from "../resolve-prompt-owner-union.js";
 import { ensureSystemPromptCacheBoundary } from "../system-prompt-cache-boundary.js";
 import { buildSystemPromptReport } from "../system-prompt-report.js";
 import { appendModelIdentitySystemPrompt, buildModelIdentityPromptLine } from "../system-prompt.js";
@@ -465,7 +466,11 @@ export async function prepareCliRunContext(
     extraSystemPrompt,
     sourceReplyDeliveryMode: params.sourceReplyDeliveryMode,
     silentReplyPromptMode: params.silentReplyPromptMode,
-    ownerNumbers: params.ownerNumbers,
+    ownerNumbers: resolvePromptOwnerNumbers({
+      sessionKey: params.sessionKey,
+      config: params.config,
+      fallbackOwnerNumbers: params.ownerNumbers,
+    }),
     heartbeatPrompt,
     docsPath: openClawReferences.docsPath ?? undefined,
     sourcePath: openClawReferences.sourcePath ?? undefined,

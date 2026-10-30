@@ -2,6 +2,7 @@
  * Tracks prompt-cache snapshot changes for observability diagnostics.
  */
 import crypto from "node:crypto";
+import { splitSystemPromptCacheBoundary } from "../system-prompt-cache-boundary.js";
 import type { NormalizedUsage } from "../usage.js";
 
 export type PromptCacheChangeCode =
@@ -9,6 +10,7 @@ export type PromptCacheChangeCode =
   | "model"
   | "streamStrategy"
   | "systemPrompt"
+  | "systemPromptDynamic"
   | "tools"
   | "transport";
 
@@ -25,6 +27,7 @@ export type PromptCacheSnapshot = {
   streamStrategy: string;
   transport?: string;
   systemPromptDigest: string;
+  stablePrefixDigest?: string;
   toolDigest: string;
   toolCount: number;
   toolNames: string[];
@@ -122,10 +125,18 @@ function diffSnapshots(
       detail: `${previous.streamStrategy} -> ${next.streamStrategy}`,
     });
   }
-  if (previous.systemPromptDigest !== next.systemPromptDigest) {
+  // Stable prefix comparison: if the stable prefix changes, it's a real cache break
+  if (previous.stablePrefixDigest !== next.stablePrefixDigest) {
     changes.push({
       code: "systemPrompt",
       detail: "system prompt digest changed",
+    });
+  } else if (previous.systemPromptDigest !== next.systemPromptDigest) {
+    // Stable prefix unchanged but full digest changed = only dynamic suffix changed
+    // This is expected/benign across different ingresses — not a lost prefix reuse
+    changes.push({
+      code: "systemPromptDynamic",
+      detail: "dynamic suffix changed (ingress-specific), stable prefix preserved",
     });
   }
   if (previous.toolDigest !== next.toolDigest) {
@@ -169,6 +180,12 @@ export function beginPromptCacheObservation(params: {
   toolNames: string[];
 }): PromptCacheObservationStart {
   const key = buildTrackerKey(params);
+  // Split on cache boundary to distinguish stable prefix vs dynamic suffix changes
+  const split = splitSystemPromptCacheBoundary(params.systemPrompt);
+  const stablePrefixDigest = split
+    ? digestText(split.stablePrefix)
+    : digestText(params.systemPrompt);
+
   const snapshot: PromptCacheSnapshot = {
     provider: params.provider,
     modelId: params.modelId,
@@ -177,6 +194,7 @@ export function beginPromptCacheObservation(params: {
     streamStrategy: params.streamStrategy,
     transport: params.transport,
     systemPromptDigest: digestText(params.systemPrompt),
+    stablePrefixDigest,
     toolDigest: buildToolDigest(params.toolNames),
     toolCount: params.toolNames.length,
     toolNames: [...params.toolNames],

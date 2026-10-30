@@ -299,4 +299,118 @@ describe("prompt cache observability", () => {
       changes: null,
     });
   });
+
+  it("reports systemPromptDynamic when only dynamic suffix changes (stable prefix preserved)", () => {
+    const stablePrefix = "## Identity\n\nI am Korrath.\n<!-- OPENCLAW_CACHE_BOUNDARY -->\n";
+    const dynamicA = "## Runtime\n\nchannel: telegram\n";
+    const dynamicB = "## Runtime\n\nchannel: cli\n";
+
+    beginPromptCacheObservation({
+      sessionId: "session-dyn",
+      sessionKey: "agent:main",
+      provider: "openai",
+      modelId: "gpt-5.4",
+      streamStrategy: "boundary-aware:openai-responses",
+      systemPrompt: stablePrefix + dynamicA,
+      toolNames: ["read"],
+    });
+    completePromptCacheObservation({
+      sessionId: "session-dyn",
+      sessionKey: "agent:main",
+      usage: { cacheRead: 8_000 },
+    });
+
+    const second = beginPromptCacheObservation({
+      sessionId: "session-dyn",
+      sessionKey: "agent:main",
+      provider: "openai",
+      modelId: "gpt-5.4",
+      streamStrategy: "boundary-aware:openai-responses",
+      systemPrompt: stablePrefix + dynamicB,
+      toolNames: ["read"],
+    });
+
+    // Stable prefix unchanged, full digest changed => systemPromptDynamic
+    expect(second.changes?.map((c) => c.code)).toEqual(["systemPromptDynamic"]);
+
+    // The break event should show systemPromptDynamic, not systemPrompt
+    expect(
+      completePromptCacheObservation({
+        sessionId: "session-dyn",
+        sessionKey: "agent:main",
+        usage: { cacheRead: 2_000 },
+      }),
+    ).toEqual({
+      previousCacheRead: 8_000,
+      cacheRead: 2_000,
+      changes: [
+        {
+          code: "systemPromptDynamic",
+          detail: "dynamic suffix changed (ingress-specific), stable prefix preserved",
+        },
+      ],
+    });
+  });
+
+  it("reports systemPrompt when stable prefix changes", () => {
+    const dynamic = "## Runtime\n\nchannel: telegram\n";
+
+    beginPromptCacheObservation({
+      sessionId: "session-stable",
+      sessionKey: "agent:main",
+      provider: "openai",
+      modelId: "gpt-5.4",
+      streamStrategy: "boundary-aware:openai-responses",
+      systemPrompt: "## Identity A\n\nI am Korrath.\n<!-- OPENCLAW_CACHE_BOUNDARY -->\n" + dynamic,
+      toolNames: ["read"],
+    });
+    completePromptCacheObservation({
+      sessionId: "session-stable",
+      sessionKey: "agent:main",
+      usage: { cacheRead: 8_000 },
+    });
+
+    const second = beginPromptCacheObservation({
+      sessionId: "session-stable",
+      sessionKey: "agent:main",
+      provider: "openai",
+      modelId: "gpt-5.4",
+      streamStrategy: "boundary-aware:openai-responses",
+      systemPrompt: "## Identity B\n\nI am Korrath.\n<!-- OPENCLAW_CACHE_BOUNDARY -->\n" + dynamic,
+      toolNames: ["read"],
+    });
+
+    // Stable prefix changed => systemPrompt (real cache break)
+    expect(second.changes?.map((c) => c.code)).toEqual(["systemPrompt"]);
+  });
+
+  it("handles system prompt with no cache boundary (no split)", () => {
+    beginPromptCacheObservation({
+      sessionId: "session-no-boundary",
+      sessionKey: "agent:main",
+      provider: "openai",
+      modelId: "gpt-5.4",
+      streamStrategy: "boundary-aware:openai-responses",
+      systemPrompt: "simple prompt without boundary marker",
+      toolNames: ["read"],
+    });
+    completePromptCacheObservation({
+      sessionId: "session-no-boundary",
+      sessionKey: "agent:main",
+      usage: { cacheRead: 8_000 },
+    });
+
+    const second = beginPromptCacheObservation({
+      sessionId: "session-no-boundary",
+      sessionKey: "agent:main",
+      provider: "openai",
+      modelId: "gpt-5.4",
+      streamStrategy: "boundary-aware:openai-responses",
+      systemPrompt: "different simple prompt",
+      toolNames: ["read"],
+    });
+
+    // No boundary to split on — full digest comparison used
+    expect(second.changes?.map((c) => c.code)).toEqual(["systemPrompt"]);
+  });
 });
