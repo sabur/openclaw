@@ -8,6 +8,7 @@ import { createSubsystemLogger } from "../logging/subsystem.js";
 import { buildAgentHookContextChannelFields } from "../plugins/hook-agent-context.js";
 import { resolveBlockMessage } from "../plugins/hook-decision-types.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
+import { buildDefaultSessionPromptContext } from "./cache-seam-diagnostic.js";
 import { cliBackendLog, formatCliBackendOutputDigest } from "./cli-runner/log.js";
 import {
   loadCliSessionContextEngineMessages,
@@ -290,6 +291,39 @@ async function finalizeCliContextEngineTurn(params: {
 
 /** Prepares and runs one CLI-backed agent turn. */
 export async function runCliAgent(params: RunCliAgentParams): Promise<EmbeddedAgentRunResult> {
+  // Cache-seam fix: ensure agent:main:main gets the same system prompt sections
+  // regardless of ingress route. Builds ownerNumbers and extraSystemPrompt from
+  // the session binding when the CLI path doesn't provide them.
+  // Each missing field is filled independently so partial states are also covered.
+  const defaultCtx = buildDefaultSessionPromptContext({
+    sessionKey: params.sessionKey,
+    config: params.config,
+    messageChannel: params.messageChannel,
+    messageProvider: params.messageProvider,
+    agentAccountId: params.agentAccountId,
+  });
+  if (defaultCtx) {
+    let fixApplied = false;
+    if (!params.extraSystemPrompt && defaultCtx.extraSystemPrompt) {
+      params.extraSystemPrompt = defaultCtx.extraSystemPrompt;
+      fixApplied = true;
+    }
+    if (!params.extraSystemPromptStatic && defaultCtx.extraSystemPromptStatic) {
+      params.extraSystemPromptStatic = defaultCtx.extraSystemPromptStatic;
+      fixApplied = true;
+    }
+    if (!params.ownerNumbers?.length && defaultCtx.ownerNumbers?.length) {
+      params.ownerNumbers = defaultCtx.ownerNumbers;
+      fixApplied = true;
+    }
+    if (fixApplied) {
+      cliBackendLog.debug(
+        `[cache-seam] fix applied: owners=${defaultCtx.ownerNumbers?.join(",") ?? "none"} ` +
+          `epLen=${defaultCtx.extraSystemPrompt?.length ?? 0} ` +
+          `sessionKey=${params.sessionKey}`,
+      );
+    }
+  }
   // Cron gate must fire before prepareCliRunContext — that call allocates
   // backend resources released only by runPreparedCliAgent's try…finally.
   params.onExecutionStarted?.();
