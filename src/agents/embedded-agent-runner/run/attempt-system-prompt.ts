@@ -3,6 +3,7 @@
  */
 import type { OpenClawConfig } from "../../../config/types.openclaw.js";
 import type { ProviderTransformSystemPromptContext } from "../../../plugins/types.js";
+import { log } from "../logger.js";
 import { buildEmbeddedSystemPrompt } from "../system-prompt.js";
 
 type EmbeddedSystemPromptParams = Parameters<typeof buildEmbeddedSystemPrompt>[0];
@@ -40,6 +41,13 @@ export function buildAttemptSystemPrompt(
   params: BuildAttemptSystemPromptParams,
 ): AttemptSystemPrompt {
   const baseSystemPrompt = buildEmbeddedSystemPrompt(params.embeddedSystemPrompt);
+  log.debug(
+    `[cache-seam] attempt systemPrompt built length=${baseSystemPrompt.length} ` +
+      `hasAuthSenders=${baseSystemPrompt.includes("Authorized Senders")} ` +
+      `hasInboundMeta=${baseSystemPrompt.includes("Inbound Context")} ` +
+      `hasDirectChat=${baseSystemPrompt.includes("direct conversation")} ` +
+      `hasCacheBoundary=${baseSystemPrompt.includes("OPENCLAW_CACHE_BOUNDARY")}`,
+  );
   const systemPrompt = params.isRawModelRun
     ? ""
     : params.transformProviderSystemPrompt({
