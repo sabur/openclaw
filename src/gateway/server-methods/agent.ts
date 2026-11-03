@@ -2531,8 +2531,31 @@ export const agentHandlers: GatewayRequestHandlers = {
           const execApprovalFollowupElevatedDefaults =
             execApprovalFollowupRuntimeHandoff?.bashElevated;
 
+          // Cache-seam fix: ensure agent:main:main gets the same system prompt sections
+          // regardless of ingress route. Builds extraSystemPrompt from the session
+          // binding when the CLI path doesn't provide it.
+          let cacheSeamExtraPrompt: string | undefined;
+          if (resolvedSessionKey === "agent:main:main" && !request.extraSystemPrompt) {
+            const { buildDefaultSessionPromptContext } =
+              await import("../../agents/cache-seam-diagnostic.js");
+            cacheSeamExtraPrompt = buildDefaultSessionPromptContext({
+              sessionKey: resolvedSessionKey,
+              config: cfgForAgent ?? cfg,
+              messageChannel: originMessageChannel,
+              messageProvider: originMessageChannel,
+              agentAccountId: resolvedAccountId,
+            })?.extraSystemPrompt;
+            if (cacheSeamExtraPrompt) {
+              context.logGateway.debug(
+                `[cache-seam] fix applied: sessionKey=${resolvedSessionKey} ` +
+                  `epLen=${cacheSeamExtraPrompt.length}`,
+              );
+            }
+          }
+
           dispatchAgentRunFromGateway({
             ingressOpts: {
+              extraSystemPrompt: cacheSeamExtraPrompt ?? request.extraSystemPrompt,
               message,
               images,
               imageOrder,
