@@ -1085,6 +1085,22 @@ async function compactEmbeddedAgentSessionDirectOnce(
     const promptContribution =
       runtimePlan.prompt.resolveSystemPromptContribution(promptContributionContext);
     const buildSystemPromptText = (defaultThinkLevel: ThinkLevel) => {
+      const resolvedOwnerNumbers = resolvePromptOwnerNumbers({
+        sessionKey: params.sessionKey,
+        config: params.config,
+        fallbackOwnerNumbers: params.ownerNumbers,
+      });
+      log.debug(
+        `[cache-seam] embedded ownerNumbers resolved=${resolvedOwnerNumbers?.length ?? 0} ` +
+          `sessionKey=${params.sessionKey} ` +
+          `fallback=${params.ownerNumbers?.length ?? 0} ` +
+          `values=${resolvedOwnerNumbers?.join(",") ?? "undefined"}`,
+      );
+      log.debug(
+        `[cache-seam] embedded extraSystemPrompt length=${params.extraSystemPrompt?.length ?? 0} ` +
+          `hasContent=${(params.extraSystemPrompt?.length ?? 0) > 0} ` +
+          `preview=${(params.extraSystemPrompt ?? "").slice(0, 120).replace(/\n/g, "\\n")}`,
+      );
       const builtSystemPrompt = buildEmbeddedSystemPrompt({
         config: params.config,
         agentId: sessionAgentId,
@@ -1092,11 +1108,7 @@ async function compactEmbeddedAgentSessionDirectOnce(
         defaultThinkLevel,
         reasoningLevel: params.reasoningLevel ?? "off",
         extraSystemPrompt: params.extraSystemPrompt,
-        ownerNumbers: resolvePromptOwnerNumbers({
-          sessionKey: params.sessionKey,
-          config: params.config,
-          fallbackOwnerNumbers: params.ownerNumbers,
-        }),
+        ownerNumbers: resolvedOwnerNumbers,
         reasoningTagHint,
         heartbeatPrompt: resolveHeartbeatPromptForSystemPrompt({
           config: params.config,
@@ -1125,6 +1137,13 @@ async function compactEmbeddedAgentSessionDirectOnce(
         promptContribution,
         nativeCommandGuidanceLines,
       });
+      log.debug(
+        `[cache-seam] embedded systemPrompt built length=${builtSystemPrompt.length} ` +
+          `hasAuthSenders=${builtSystemPrompt.includes("Authorized Senders")} ` +
+          `hasInboundMeta=${builtSystemPrompt.includes("Inbound Context")} ` +
+          `hasDirectChat=${builtSystemPrompt.includes("direct conversation")} ` +
+          `hasCacheBoundary=${builtSystemPrompt.includes("OPENCLAW_CACHE_BOUNDARY")}`,
+      );
       return transformProviderSystemPrompt({
         provider,
         config: params.config,

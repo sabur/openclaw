@@ -199,6 +199,11 @@ export async function prepareCliRunContext(
     authCredential = authStore.profiles[effectiveAuthProfileId];
   }
   const extraSystemPrompt = params.extraSystemPrompt?.trim() ?? "";
+  cliBackendLog.debug(
+    `[cache-seam] CLI extraSystemPrompt length=${extraSystemPrompt.length} ` +
+      `hasContent=${extraSystemPrompt.length > 0} ` +
+      `preview=${extraSystemPrompt.slice(0, 120).replace(/\n/g, "\\n")}`,
+  );
   // Use the static portion (excluding per-message inbound metadata) for session reuse hashing.
   // Per-message metadata (timestamps, message IDs) changes every turn and must not trigger session resets.
   const extraSystemPromptHash =
@@ -458,6 +463,17 @@ export async function prepareCliRunContext(
     agentId: sessionAgentId,
   });
   const systemPromptSkillsPrompt = claudeSkillsPlugin.args.length > 0 ? "" : skillsPrompt;
+  const resolvedOwnerNumbers = resolvePromptOwnerNumbers({
+    sessionKey: params.sessionKey,
+    config: params.config,
+    fallbackOwnerNumbers: params.ownerNumbers,
+  });
+  cliBackendLog.debug(
+    `[cache-seam] CLI ownerNumbers resolved=${resolvedOwnerNumbers?.length ?? 0} ` +
+      `sessionKey=${params.sessionKey} ` +
+      `fallback=${params.ownerNumbers?.length ?? 0} ` +
+      `values=${resolvedOwnerNumbers?.join(",") ?? "undefined"}`,
+  );
   const builtSystemPrompt = buildCliAgentSystemPrompt({
     workspaceDir,
     cwd,
@@ -466,11 +482,7 @@ export async function prepareCliRunContext(
     extraSystemPrompt,
     sourceReplyDeliveryMode: params.sourceReplyDeliveryMode,
     silentReplyPromptMode: params.silentReplyPromptMode,
-    ownerNumbers: resolvePromptOwnerNumbers({
-      sessionKey: params.sessionKey,
-      config: params.config,
-      fallbackOwnerNumbers: params.ownerNumbers,
-    }),
+    ownerNumbers: resolvedOwnerNumbers,
     heartbeatPrompt,
     docsPath: openClawReferences.docsPath ?? undefined,
     sourcePath: openClawReferences.sourcePath ?? undefined,
@@ -480,6 +492,13 @@ export async function prepareCliRunContext(
     modelDisplay,
     agentId: sessionAgentId,
   });
+  cliBackendLog.debug(
+    `[cache-seam] CLI systemPrompt built length=${builtSystemPrompt.length} ` +
+      `hasAuthSenders=${builtSystemPrompt.includes("Authorized Senders")} ` +
+      `hasInboundMeta=${builtSystemPrompt.includes("Inbound Context")} ` +
+      `hasDirectChat=${builtSystemPrompt.includes("direct conversation")} ` +
+      `hasCacheBoundary=${builtSystemPrompt.includes("OPENCLAW_CACHE_BOUNDARY")}`,
+  );
   const transformedSystemPrompt =
     backendResolved.transformSystemPrompt?.({
       config: params.config,
