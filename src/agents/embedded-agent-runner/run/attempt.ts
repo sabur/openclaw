@@ -1948,6 +1948,10 @@ export async function runEmbeddedAttempt(
           agentId: sessionAgentId,
         },
       },
+      sessionKey: params.sessionKey,
+      messageChannel: params.messageChannel,
+      messageProvider: params.messageProvider,
+      agentAccountId: params.agentAccountId,
     });
     const appendPrompt = attemptSystemPrompt.systemPrompt;
     const systemPromptReport = buildSystemPromptReport({

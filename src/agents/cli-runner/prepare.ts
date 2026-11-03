@@ -41,6 +41,7 @@ import {
   makeBootstrapWarn as makeBootstrapWarnImpl,
   resolveBootstrapContextForRun as resolveBootstrapContextForRunImpl,
 } from "../bootstrap-files.js";
+import { logCacheSeamDiagnostic } from "../cache-seam-diagnostic.js";
 import { CLI_AUTH_EPOCH_VERSION, resolveCliAuthEpoch } from "../cli-auth-epoch.js";
 import { resolveCliBackendConfig } from "../cli-backends.js";
 import { hashCliSessionText, resolveCliSessionReuse } from "../cli-session.js";
@@ -199,11 +200,6 @@ export async function prepareCliRunContext(
     authCredential = authStore.profiles[effectiveAuthProfileId];
   }
   const extraSystemPrompt = params.extraSystemPrompt?.trim() ?? "";
-  cliBackendLog.debug(
-    `[cache-seam] CLI extraSystemPrompt length=${extraSystemPrompt.length} ` +
-      `hasContent=${extraSystemPrompt.length > 0} ` +
-      `preview=${extraSystemPrompt.slice(0, 120).replace(/\n/g, "\\n")}`,
-  );
   // Use the static portion (excluding per-message inbound metadata) for session reuse hashing.
   // Per-message metadata (timestamps, message IDs) changes every turn and must not trigger session resets.
   const extraSystemPromptHash =
@@ -468,12 +464,6 @@ export async function prepareCliRunContext(
     config: params.config,
     fallbackOwnerNumbers: params.ownerNumbers,
   });
-  cliBackendLog.debug(
-    `[cache-seam] CLI ownerNumbers resolved=${resolvedOwnerNumbers?.length ?? 0} ` +
-      `sessionKey=${params.sessionKey} ` +
-      `fallback=${params.ownerNumbers?.length ?? 0} ` +
-      `values=${resolvedOwnerNumbers?.join(",") ?? "undefined"}`,
-  );
   const builtSystemPrompt = buildCliAgentSystemPrompt({
     workspaceDir,
     cwd,
@@ -492,13 +482,17 @@ export async function prepareCliRunContext(
     modelDisplay,
     agentId: sessionAgentId,
   });
-  cliBackendLog.debug(
-    `[cache-seam] CLI systemPrompt built length=${builtSystemPrompt.length} ` +
-      `hasAuthSenders=${builtSystemPrompt.includes("Authorized Senders")} ` +
-      `hasInboundMeta=${builtSystemPrompt.includes("Inbound Context")} ` +
-      `hasDirectChat=${builtSystemPrompt.includes("direct conversation")} ` +
-      `hasCacheBoundary=${builtSystemPrompt.includes("OPENCLAW_CACHE_BOUNDARY")}`,
-  );
+  logCacheSeamDiagnostic({
+    source: "prepare",
+    sessionKey: params.sessionKey,
+    ownerNumbers: resolvedOwnerNumbers,
+    extraSystemPrompt,
+    extraSystemPromptStatic: params.extraSystemPromptStatic,
+    systemPrompt: builtSystemPrompt,
+    messageChannel: params.messageChannel,
+    messageProvider: params.messageProvider,
+    agentAccountId: params.agentAccountId,
+  });
   const transformedSystemPrompt =
     backendResolved.transformSystemPrompt?.({
       config: params.config,

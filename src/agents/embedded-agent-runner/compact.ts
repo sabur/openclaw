@@ -66,6 +66,7 @@ import {
   resolveBootstrapContextForRun,
   resolveContextInjectionMode,
 } from "../bootstrap-files.js";
+import { logCacheSeamDiagnostic } from "../cache-seam-diagnostic.js";
 import {
   listChannelSupportedActions,
   resolveChannelMessageToolHints,
@@ -1090,17 +1091,6 @@ async function compactEmbeddedAgentSessionDirectOnce(
         config: params.config,
         fallbackOwnerNumbers: params.ownerNumbers,
       });
-      log.debug(
-        `[cache-seam] embedded ownerNumbers resolved=${resolvedOwnerNumbers?.length ?? 0} ` +
-          `sessionKey=${params.sessionKey} ` +
-          `fallback=${params.ownerNumbers?.length ?? 0} ` +
-          `values=${resolvedOwnerNumbers?.join(",") ?? "undefined"}`,
-      );
-      log.debug(
-        `[cache-seam] embedded extraSystemPrompt length=${params.extraSystemPrompt?.length ?? 0} ` +
-          `hasContent=${(params.extraSystemPrompt?.length ?? 0) > 0} ` +
-          `preview=${(params.extraSystemPrompt ?? "").slice(0, 120).replace(/\n/g, "\\n")}`,
-      );
       const builtSystemPrompt = buildEmbeddedSystemPrompt({
         config: params.config,
         agentId: sessionAgentId,
@@ -1137,13 +1127,16 @@ async function compactEmbeddedAgentSessionDirectOnce(
         promptContribution,
         nativeCommandGuidanceLines,
       });
-      log.debug(
-        `[cache-seam] embedded systemPrompt built length=${builtSystemPrompt.length} ` +
-          `hasAuthSenders=${builtSystemPrompt.includes("Authorized Senders")} ` +
-          `hasInboundMeta=${builtSystemPrompt.includes("Inbound Context")} ` +
-          `hasDirectChat=${builtSystemPrompt.includes("direct conversation")} ` +
-          `hasCacheBoundary=${builtSystemPrompt.includes("OPENCLAW_CACHE_BOUNDARY")}`,
-      );
+      logCacheSeamDiagnostic({
+        source: "compact",
+        sessionKey: params.sessionKey,
+        ownerNumbers: resolvedOwnerNumbers,
+        extraSystemPrompt: params.extraSystemPrompt,
+        systemPrompt: builtSystemPrompt,
+        messageChannel: params.messageChannel,
+        messageProvider: params.messageProvider,
+        agentAccountId: params.agentAccountId,
+      });
       return transformProviderSystemPrompt({
         provider,
         config: params.config,

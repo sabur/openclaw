@@ -3,6 +3,7 @@
  */
 import type { OpenClawConfig } from "../../../config/types.openclaw.js";
 import type { ProviderTransformSystemPromptContext } from "../../../plugins/types.js";
+import { logCacheSeamDiagnostic } from "../../cache-seam-diagnostic.js";
 import { log } from "../logger.js";
 import { buildEmbeddedSystemPrompt } from "../system-prompt.js";
 
@@ -24,6 +25,11 @@ export type BuildAttemptSystemPromptParams = {
     workspaceDir: string;
     context: Omit<ProviderTransformSystemPromptContext, "systemPrompt">;
   };
+  /** Cache-seam diagnostic context — ingress route identifiers. */
+  sessionKey?: string;
+  messageChannel?: string;
+  messageProvider?: string;
+  agentAccountId?: string;
 };
 
 /** System prompt pair used by an attempt: untransformed base plus provider-ready prompt. */
@@ -41,13 +47,16 @@ export function buildAttemptSystemPrompt(
   params: BuildAttemptSystemPromptParams,
 ): AttemptSystemPrompt {
   const baseSystemPrompt = buildEmbeddedSystemPrompt(params.embeddedSystemPrompt);
-  log.debug(
-    `[cache-seam] attempt systemPrompt built length=${baseSystemPrompt.length} ` +
-      `hasAuthSenders=${baseSystemPrompt.includes("Authorized Senders")} ` +
-      `hasInboundMeta=${baseSystemPrompt.includes("Inbound Context")} ` +
-      `hasDirectChat=${baseSystemPrompt.includes("direct conversation")} ` +
-      `hasCacheBoundary=${baseSystemPrompt.includes("OPENCLAW_CACHE_BOUNDARY")}`,
-  );
+  logCacheSeamDiagnostic({
+    source: "attempt",
+    sessionKey: params.sessionKey,
+    ownerNumbers: params.embeddedSystemPrompt.ownerNumbers,
+    extraSystemPrompt: params.embeddedSystemPrompt.extraSystemPrompt,
+    systemPrompt: baseSystemPrompt,
+    messageChannel: params.messageChannel,
+    messageProvider: params.messageProvider,
+    agentAccountId: params.agentAccountId,
+  });
   const systemPrompt = params.isRawModelRun
     ? ""
     : params.transformProviderSystemPrompt({
