@@ -534,6 +534,8 @@ export function installToolResultContextGuard(params: {
           `[context-overflow-midturn-precheck] tool-result-guard check route=${precheck.route} ` +
             `messages=${contextMessages.length} prePromptMessageCount=${prePromptMessageCount} ` +
             `estimatedPromptTokens=${precheck.estimatedPromptTokens} ` +
+            `rawEstimateTokens=${precheck.rawEstimateTokens ?? "?"} ` +
+            `margin=${precheck.appliedMargin ?? "?"} ` +
             `promptBudgetBeforeReserve=${precheck.promptBudgetBeforeReserve} ` +
             `overflowTokens=${precheck.overflowTokens}`,
         );

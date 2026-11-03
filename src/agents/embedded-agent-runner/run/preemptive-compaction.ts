@@ -31,6 +31,8 @@ export type PreemptiveCompactionDecision = {
   route: PreemptiveCompactionRoute;
   shouldCompact: boolean;
   estimatedPromptTokens: number;
+  rawEstimateTokens?: number;
+  appliedMargin?: number;
   pressureSource?: string;
   promptBudgetBeforeReserve: number;
   overflowTokens: number;
@@ -275,14 +277,22 @@ export function shouldPreemptivelyCompactBeforePrompt(params: {
   const llmBoundaryTokenPressure = normalizeLlmBoundaryTokenPressure(
     params.llmBoundaryTokenPressure,
   );
+  // Compute both estimates: the raw (pre-margin) and the final (with margin)
+  // so we can compare against Exo's actual token count in logs.
+  const rawEstimatedPromptTokens =
+    llmBoundaryTokenPressure?.estimatedPromptTokens !== undefined
+      ? Math.ceil(llmBoundaryTokenPressure.estimatedPromptTokens / SAFETY_MARGIN)
+      : estimatePrePromptTokens({
+          messages: params.messages,
+          systemPrompt: params.systemPrompt,
+          prompt: params.prompt,
+        });
   let estimatedPromptTokens =
     llmBoundaryTokenPressure?.estimatedPromptTokens ??
-    estimatePrePromptTokens({
-      messages: params.messages,
-      systemPrompt: params.systemPrompt,
-      prompt: params.prompt,
-    });
+    Math.ceil(rawEstimatedPromptTokens * SAFETY_MARGIN);
   let pressureSource = llmBoundaryTokenPressure?.source ?? "transcript_estimate";
+  let rawEstimateTokens = rawEstimatedPromptTokens;
+  let appliedMargin = SAFETY_MARGIN;
   if (params.unwindowedMessages && params.unwindowedMessages !== params.messages) {
     const unwindowedEstimatedPromptTokens = estimatePrePromptTokens({
       messages: params.unwindowedMessages,
@@ -293,6 +303,9 @@ export function shouldPreemptivelyCompactBeforePrompt(params: {
       estimatedPromptTokens = unwindowedEstimatedPromptTokens;
       messagesForPressure = params.unwindowedMessages;
       pressureSource = "unwindowed_transcript_estimate";
+      // Unwindowed path uses the same margin — adjust rawEstimate
+      rawEstimateTokens = Math.ceil(unwindowedEstimatedPromptTokens / SAFETY_MARGIN);
+      appliedMargin = SAFETY_MARGIN;
     }
   }
   const contextTokenBudget = Math.max(1, Math.floor(params.contextTokenBudget));
@@ -337,6 +350,8 @@ export function shouldPreemptivelyCompactBeforePrompt(params: {
     route,
     shouldCompact: route === "compact_only" || route === "compact_then_truncate",
     estimatedPromptTokens,
+    rawEstimateTokens,
+    appliedMargin,
     pressureSource,
     promptBudgetBeforeReserve,
     overflowTokens,
@@ -365,6 +380,8 @@ export function formatPrePromptPrecheckLog(params: {
     `provider=${params.provider}/${params.modelId} ` +
     `route=${result.route} ` +
     `estimatedPromptTokens=${result.estimatedPromptTokens} ` +
+    `rawEstimateTokens=${result.rawEstimateTokens ?? "?"} ` +
+    `margin=${result.appliedMargin ?? "?"} ` +
     `pressureSource=${result.pressureSource ?? "unknown"} ` +
     `promptBudgetBeforeReserve=${result.promptBudgetBeforeReserve} ` +
     `overflowTokens=${result.overflowTokens} ` +
