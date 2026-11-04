@@ -69,12 +69,22 @@ export function buildDefaultSessionPromptContext(params: {
   const provider = params.messageProvider?.trim() || params.messageChannel?.trim() || undefined;
   const accountId = params.agentAccountId?.trim() || undefined;
 
-  // Only build extraSystemPrompt if we have channel/provider data
-  let extraSystemPrompt: string | undefined;
-  if (channel || provider) {
-    const parts: string[] = [];
+  // Build all sections into one extraSystemPrompt
+  const parts: string[] = [];
 
-    // Build inbound metadata section (mirrors buildInboundMetaSystemPrompt)
+  // Build authorized senders section from resolved owner numbers
+  // Mirrors buildUserIdentitySection in system-prompt.ts
+  if (ownerNumbers && ownerNumbers.length > 0) {
+    parts.push(
+      "## Authorized Senders",
+      `Authorized senders: ${ownerNumbers.join(", ")}. These senders are allowlisted; do not assume they are the owner.`,
+      "",
+    );
+  }
+
+  // Build inbound metadata section (mirrors buildInboundMetaSystemPrompt)
+  // Only include if we have channel/provider data
+  if (channel || provider) {
     const payload: Record<string, unknown> = {
       schema: "openclaw.inbound_meta.v2",
     };
@@ -103,11 +113,9 @@ export function buildDefaultSessionPromptContext(params: {
     parts.push(
       `You are in a ${providerLabel} direct conversation. Your replies are automatically sent to this conversation.`,
     );
-
-    extraSystemPrompt = parts.join("\n");
   }
 
-  // Static is the same as full (no per-message fields like timestamps in our construction)
+  const extraSystemPrompt = parts.length > 0 ? parts.join("\n") : undefined;
   const extraSystemPromptStatic = extraSystemPrompt;
 
   return {
