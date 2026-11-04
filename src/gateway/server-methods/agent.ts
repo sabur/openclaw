@@ -2555,7 +2555,6 @@ export const agentHandlers: GatewayRequestHandlers = {
 
           dispatchAgentRunFromGateway({
             ingressOpts: {
-              extraSystemPrompt: cacheSeamExtraPrompt ?? request.extraSystemPrompt,
               message,
               images,
               imageOrder,
@@ -2593,7 +2592,7 @@ export const agentHandlers: GatewayRequestHandlers = {
               lane: request.lane,
               modelRun: request.modelRun === true,
               promptMode: request.promptMode,
-              extraSystemPrompt: request.extraSystemPrompt,
+              extraSystemPrompt: cacheSeamExtraPrompt ?? request.extraSystemPrompt,
               bootstrapContextMode: request.bootstrapContextMode,
               bootstrapContextRunKind: request.bootstrapContextRunKind,
               acpTurnSource: request.acpTurnSource,
