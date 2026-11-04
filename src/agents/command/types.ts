@@ -108,6 +108,8 @@ export type AgentCommandOpts = {
   abortSignal?: AbortSignal;
   lane?: string;
   runId?: string;
+  /** Owner numbers for ## Authorized Senders section — placed mid-prompt by system prompt builder. */
+  ownerNumbers?: string[];
   extraSystemPrompt?: string;
   /** Bootstrap workspace context injection mode for this run. */
   bootstrapContextMode?: "full" | "lightweight";

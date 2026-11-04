@@ -619,6 +619,7 @@ export function runAgentAttempt(params: {
         runId: params.runId,
         lane: params.opts.lane,
         extraSystemPrompt: params.opts.extraSystemPrompt,
+        ownerNumbers: params.opts.ownerNumbers,
         inputProvenance: params.opts.inputProvenance,
         cliSessionId: nextCliSessionId,
         cliSessionBinding:
@@ -735,6 +736,7 @@ export function runAgentAttempt(params: {
     lane: params.opts.lane,
     abortSignal: params.opts.abortSignal,
     extraSystemPrompt: params.opts.extraSystemPrompt,
+    ownerNumbers: params.opts.ownerNumbers,
     bootstrapContextMode: params.opts.bootstrapContextMode,
     bootstrapContextRunKind: params.opts.bootstrapContextRunKind,
     toolsAllow: params.opts.toolsAllow,

@@ -2535,20 +2535,24 @@ export const agentHandlers: GatewayRequestHandlers = {
           // regardless of ingress route. Builds extraSystemPrompt from the session
           // binding when the CLI path doesn't provide it.
           let cacheSeamExtraPrompt: string | undefined;
+          let cacheSeamOwnerNumbers: string[] | undefined;
           if (resolvedSessionKey === "agent:main:main" && !request.extraSystemPrompt) {
             const { buildDefaultSessionPromptContext } =
               await import("../../agents/cache-seam-diagnostic.js");
-            cacheSeamExtraPrompt = buildDefaultSessionPromptContext({
+            const ctx = buildDefaultSessionPromptContext({
               sessionKey: resolvedSessionKey,
               config: cfgForAgent ?? cfg,
               messageChannel: originMessageChannel,
               messageProvider: originMessageChannel,
               agentAccountId: resolvedAccountId,
-            })?.extraSystemPrompt;
+            });
+            cacheSeamExtraPrompt = ctx?.extraSystemPrompt;
+            cacheSeamOwnerNumbers = ctx?.ownerNumbers;
             if (cacheSeamExtraPrompt) {
               context.logGateway.debug(
                 `[cache-seam] fix applied: sessionKey=${resolvedSessionKey} ` +
-                  `epLen=${cacheSeamExtraPrompt.length}`,
+                  `epLen=${cacheSeamExtraPrompt.length}` +
+                  ` owners=${cacheSeamOwnerNumbers?.length ?? 0}`,
               );
             }
           }
@@ -2593,6 +2597,7 @@ export const agentHandlers: GatewayRequestHandlers = {
               modelRun: request.modelRun === true,
               promptMode: request.promptMode,
               extraSystemPrompt: cacheSeamExtraPrompt ?? request.extraSystemPrompt,
+              ownerNumbers: cacheSeamOwnerNumbers,
               bootstrapContextMode: request.bootstrapContextMode,
               bootstrapContextRunKind: request.bootstrapContextRunKind,
               acpTurnSource: request.acpTurnSource,
