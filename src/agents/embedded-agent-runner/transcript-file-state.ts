@@ -533,13 +533,29 @@ export class TranscriptFileState {
     this.leafId = null;
   }
 
+  /**
+   * Strip toolResult details before persisting so the on-disk bytes match
+   * what was sent to the LLM (exo KV cache operates on raw token streams).
+   * The model never sees `details` — it's execution metadata only.
+   */
+  private static stripToolResultDetailsForPersistence(
+    message: SessionMessageEntry["message"],
+  ): SessionMessageEntry["message"] {
+    if (message.role === "toolResult" && "details" in message) {
+      const sanitized = { ...(message as object) } as { details?: unknown };
+      delete sanitized.details;
+      return sanitized as SessionMessageEntry["message"];
+    }
+    return message;
+  }
+
   appendMessage(message: SessionMessageEntry["message"]): SessionMessageEntry {
     return this.appendEntry({
       type: "message",
       id: generateEntryId(this.byId),
       parentId: this.leafId,
       timestamp: new Date().toISOString(),
-      message,
+      message: TranscriptFileState.stripToolResultDetailsForPersistence(message),
     });
   }
 
