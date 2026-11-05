@@ -929,13 +929,35 @@ export class SessionManager {
    * so it is easier to find them.
    * These need to be appended via appendCompaction() and appendBranchSummary() methods.
    */
+  /**
+   * Strip toolResult details before persisting so the on-disk bytes match
+   * what was sent to the LLM (exo KV cache operates on raw token streams).
+   * The model never sees `details` — it's execution metadata only.
+   */
+  private stripToolResultDetailsForPersistence(
+    message: Message | CustomMessage | BashExecutionMessage,
+  ): Message | CustomMessage | BashExecutionMessage {
+    if (
+      typeof message === "object" &&
+      message !== null &&
+      "role" in message &&
+      (message as Record<string, unknown>).role === "toolResult" &&
+      "details" in message
+    ) {
+      const sanitized = { ...(message as object) } as { details?: unknown };
+      delete sanitized.details;
+      return sanitized as Message;
+    }
+    return message;
+  }
+
   appendMessage(message: Message | CustomMessage | BashExecutionMessage): string {
     const entry: SessionMessageEntry = {
       type: "message",
       id: generateId(this.byId),
       parentId: this.leafId,
       timestamp: new Date().toISOString(),
-      message,
+      message: this.stripToolResultDetailsForPersistence(message),
     };
     this.appendEntry(entry);
     return entry.id;
