@@ -29,7 +29,8 @@ type CacheTraceStage =
   | "prompt:boundary-after"
   | "stream:context"
   | "session:after"
-  | "mirror:duplicate";
+  | "mirror:duplicate"
+  | "prompt:llm-request";
 
 type CacheTraceEvent = {
   ts: string;
@@ -61,6 +62,8 @@ type CacheTrace = {
   filePath: string;
   recordStage: (stage: CacheTraceStage, payload?: Partial<CacheTraceEvent>) => void;
   wrapStreamFn: (streamFn: StreamFn) => StreamFn;
+  /** Record the complete serialized LLM request body for byte-level comparison. */
+  recordLlmRequestBody: (body: string) => void;
 };
 
 type CacheTraceInit = {
@@ -217,9 +220,34 @@ export function createCacheTrace(params: CacheTraceInit): CacheTrace | null {
         messages: traceContext.messages ?? [],
         options: (options ?? {}) as Record<string, unknown>,
       });
-      return streamFn(model, context, options);
+
+      // Capture the serialized LLM request body when it fires via onPayload
+      const originalOnPayload = options?.onPayload;
+      const wrappedOptions = originalOnPayload
+        ? {
+            ...options,
+            onPayload: (payload: unknown, ...args: unknown[]) => {
+              try {
+                const body = JSON.stringify(payload);
+                recordLlmRequestBody(body);
+              } catch {
+                // best-effort
+              }
+              return originalOnPayload(payload, ...args);
+            },
+          }
+        : options;
+
+      return streamFn(model, context, wrappedOptions);
     };
     return wrapped;
+  };
+
+  const recordLlmRequestBody: CacheTrace["recordLlmRequestBody"] = (body) => {
+    recordStage("prompt:llm-request", {
+      note: `llm request body (${body.length} chars)`,
+      prompt: body,
+    });
   };
 
   return {
@@ -227,5 +255,6 @@ export function createCacheTrace(params: CacheTraceInit): CacheTrace | null {
     filePath: cfg.filePath,
     recordStage,
     wrapStreamFn,
+    recordLlmRequestBody,
   };
 }
