@@ -2366,8 +2366,18 @@ export async function runEmbeddedAttempt(
       };
       if (typeof activeSession.agent.convertToLlm === "function") {
         const baseConvertToLlm = activeSession.agent.convertToLlm.bind(activeSession.agent);
-        activeSession.agent.convertToLlm = async (messages) =>
-          await baseConvertToLlm(normalizeMessagesForLlmBoundary(messages, buildBoundaryOptions()));
+        activeSession.agent.convertToLlm = async (messages) => {
+          cacheTrace?.recordStage("prompt:boundary-before", {
+            messages,
+            note: `pre-normalization: ${messages.length} messages`,
+          });
+          const normalized = normalizeMessagesForLlmBoundary(messages, buildBoundaryOptions());
+          cacheTrace?.recordStage("prompt:boundary-after", {
+            messages: normalized,
+            note: `post-normalization: ${normalized.length} messages`,
+          });
+          return await baseConvertToLlm(normalized);
+        };
       }
       let prePromptMessageCount = activeSession.messages.length;
       let contextEngineAfterTurnCheckpoint: number | null = null;

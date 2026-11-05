@@ -25,8 +25,11 @@ type CacheTraceStage =
   | "session:limited"
   | "prompt:before"
   | "prompt:images"
+  | "prompt:boundary-before"
+  | "prompt:boundary-after"
   | "stream:context"
-  | "session:after";
+  | "session:after"
+  | "mirror:duplicate";
 
 type CacheTraceEvent = {
   ts: string;
