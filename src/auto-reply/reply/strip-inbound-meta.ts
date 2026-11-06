@@ -22,13 +22,27 @@ const LEADING_TIMESTAMP_PREFIX_RE = /^\[[A-Za-z]{3} \d{4}-\d{2}-\d{2} \d{2}:\d{2
  */
 const INBOUND_META_SENTINELS = [
   "Conversation info (untrusted metadata):",
-  "Conversation context (untrusted, chronological, selected for current message):",
   "Sender (untrusted metadata):",
+  "Conversation context (untrusted, chronological, selected for current message):",
   "Thread starter (untrusted, for context):",
   "Reply target of current user message (untrusted, for context):",
   "Forwarded message context (untrusted metadata):",
   "Chat history since last reply (untrusted, for context):",
 ] as const;
+
+/**
+ * Sentinels whose metadata body is plain text (not fenced JSON).
+ * These are stripped as continuous lines until a blank line.
+ */
+const PLAIN_TEXT_META_SENTINELS = [
+  "Conversation context (untrusted, chronological, selected for current message):",
+] as const;
+
+/** Check if a sentinel line uses plain-text format. */
+function isPlainTextSentinel(line: string): boolean {
+  const trimmed = line.trim();
+  return PLAIN_TEXT_META_SENTINELS.some((s) => s === trimmed);
+}
 
 const MESSAGE_TOOL_DELIVERY_HINTS = [
   "Delivery: to send a message, use the `message` tool.",
@@ -239,7 +253,12 @@ export function stripInboundMetadata(text: string): string {
         inPlainBlock = false;
         continue;
       }
-      // Plain-text block (Conversation context, inter-session provenance).
+      if (!isPlainTextSentinel(line)) {
+        // Sentinel without json fence — preserve as user text.
+        result.push(line);
+        continue;
+      }
+      // Plain-text block (Conversation context).
       // Terminated by a blank line or end of text.
       inMetaBlock = true;
       inFencedJson = false;

@@ -42,13 +42,10 @@ describe("normalizeMessagesForLlmBoundary", () => {
     // string after metadata stripping (cache-bust fix — issue #3658).
     expect(output[0]?.content).toBe("Actual historical ask");
     // Current turn: single-text-block array collapsed to plain string; metadata
-    // blocks preserved for the LLM.
+    // blocks are stripped on ALL turns for cache stability.
     const currentContent = output[2]?.content;
     expect(typeof currentContent).toBe("string");
-    expect(currentContent).toContain(
-      "Reply target of current user message (untrusted, for context):",
-    );
-    expect(JSON.stringify(input)).toContain("Conversation info");
+    expect(currentContent).toBe("Current ask");
   });
 
   it("strips inbound metadata from string historical user turns", () => {
@@ -287,16 +284,13 @@ describe("normalizeMessagesForLlmBoundary", () => {
 
     // Historical: form-canonicalized to plain string after metadata strip.
     expect(output[0]?.content).toBe("Old ask");
-    // Current: form-canonicalized to plain string; metadata blocks preserved.
+    // Current: form-canonicalized to plain string; metadata stripped on ALL turns.
     const currentContent = output[2]?.content;
     expect(typeof currentContent).toBe("string");
-    expect(currentContent).toContain(
-      "Reply target of current user message (untrusted, for context):",
-    );
-    expect(currentContent).toContain("quoted status body");
+    expect(currentContent).toBe("Current ask");
   });
 
-  it("preserves current user inbound metadata through tool-result continuation", () => {
+  it("strips current user inbound metadata through tool-result continuation", () => {
     const currentEnvelope =
       'Conversation info (untrusted metadata):\n```json\n{"channel":"discord","has_reply_context":true}\n```\n\nReply target of current user message (untrusted, for context):\n```json\n{"body":"quoted status body"}\n```\n\nCurrent ask';
     const input = [
@@ -324,13 +318,10 @@ describe("normalizeMessagesForLlmBoundary", () => {
     ) as unknown as Array<{ content?: unknown }>;
 
     // Current turn (only user message): form-canonicalized to plain string;
-    // metadata blocks preserved for the LLM.
+    // metadata stripped on ALL turns.
     const currentContent = output[0]?.content;
     expect(typeof currentContent).toBe("string");
-    expect(currentContent).toContain(
-      "Reply target of current user message (untrusted, for context):",
-    );
-    expect(currentContent).toContain("quoted status body");
+    expect(currentContent).toBe("Current ask");
   });
 
   it("strips tool result details before provider conversion", () => {

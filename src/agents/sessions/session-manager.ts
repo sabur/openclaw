@@ -417,7 +417,11 @@ export function loadEntriesFromFile(filePath: string): FileEntry[] {
  */
 function stripToolResultDetailsFromEntry(entry: FileEntry): void {
   if (
+    entry &&
+    typeof entry === "object" &&
+    "type" in entry &&
     entry.type === "message" &&
+    entry.message &&
     entry.message.role === "toolResult" &&
     "details" in entry.message
   ) {
