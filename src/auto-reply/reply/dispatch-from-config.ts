@@ -2216,6 +2216,8 @@ export async function dispatchReplyFromConfig(
       // Trailing commentary must land ahead of the final answer.
       await flushPendingCommentaryProgress();
       throwIfFinalDeliveryAborted();
+      const sourceReplyTranscriptMirror =
+        getReplyPayloadMetadata(payload)?.sourceReplyTranscriptMirror;
       const hasVisibleFinalContent = hasOutboundReplyContent(payload, { trimText: true });
       if (hasVisibleFinalContent) {
         markInboundDedupeReplayUnsafe();
@@ -2244,6 +2246,12 @@ export async function dispatchReplyFromConfig(
             `dispatch-from-config: route-reply (final) failed: ${result.error ?? "unknown error"}`,
           );
         }
+        if (isRoutedReplyDelivered(result)) {
+          await mirrorInternalSourceReplyToTranscript({
+            metadata: sourceReplyTranscriptMirror,
+            cfg,
+          });
+        }
         return {
           queuedFinal: result.ok,
           routedFinalCount: isRoutedReplyDelivered(result) ? 1 : 0,
@@ -2251,7 +2259,20 @@ export async function dispatchReplyFromConfig(
       }
       throwIfFinalDeliveryAborted();
       markInboundDedupeReplayUnsafe();
+      const finalOutcomeBefore = getDispatcherFinalOutcomeCounts(dispatcher);
+      const deliveredSourceReplyTranscriptMirror = captureDeliveredSourceReplyTranscriptMirror({
+        dispatcher,
+        metadata: sourceReplyTranscriptMirror,
+      });
       const queuedFinal = dispatcher.sendFinalReply(normalizedPayload);
+      if (queuedFinal) {
+        await mirrorInternalSourceReplyAfterDispatcherDelivery({
+          dispatcher,
+          before: finalOutcomeBefore,
+          metadata: deliveredSourceReplyTranscriptMirror,
+          cfg,
+        });
+      }
       return {
         queuedFinal,
         routedFinalCount: 0,
