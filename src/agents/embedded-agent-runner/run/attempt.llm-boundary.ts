@@ -457,10 +457,12 @@ function stripHistoricalInboundMetadataFromUserMessages(
       ? override.timestamp
       : runtimeTimestamp;
 
-    // Historical turns strip inbound metadata blocks (Conversation info, Sender
-    // info, etc.); the active turn keeps its metadata for the current request.
-    // BOTH then get form-canonicalized and stamped from their own timestamp, so
-    // the SAME message serializes identically whether current or historical.
+    // ALL turns strip inbound metadata blocks (Conversation info, Sender
+    // info, etc.) so the same message serializes identically whether it's
+    // the active turn or a historical one. This keeps the byte stream stable
+    // across turns — without it, the active turn carries extra metadata JSON
+    // blocks that are stripped when the next message arrives, shifting the
+    // token stream and breaking exo's KV cache alignment.
     //
     // Channel-envelope preservation: a message that already carries its OWN
     // leading `[DOW YYYY-MM-DD HH:MM ...] ` envelope (Discord/Telegram, or a
@@ -471,15 +473,12 @@ function stripHistoricalInboundMetadataFromUserMessages(
     const transformText = (raw: string): string => {
       const envelopeMatch = raw.match(BOUNDARY_LEADING_ENVELOPE_CAPTURE);
       if (envelopeMatch || raw.includes(BOUNDARY_CRON_TIME_MARKER)) {
-        if (isActive) {
-          return raw;
-        }
         const envelope = envelopeMatch ? envelopeMatch[0] : "";
         const body = envelope ? raw.slice(envelope.length) : raw;
         // Strip metadata from the body but re-attach the original envelope.
         return `${envelope}${stripInboundMetadata(body)}`;
       }
-      const stripped = isActive ? raw : stripInboundMetadata(raw);
+      const stripped = stripInboundMetadata(raw);
       return stampUserTextWithMessageTimestamp(stripped, messageTimestamp, options?.timezone);
     };
 
@@ -527,7 +526,7 @@ function stripHistoricalInboundMetadataFromUserMessages(
         nextText = transformText(textBlock.text);
         processedFirstText = true;
       } else {
-        nextText = isActive ? textBlock.text : stripInboundMetadata(textBlock.text);
+        nextText = stripInboundMetadata(textBlock.text);
       }
       if (nextText === textBlock.text) {
         return block;
