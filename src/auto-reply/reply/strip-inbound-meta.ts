@@ -213,6 +213,8 @@ export function stripInboundMetadata(text: string): string {
   const result: string[] = [];
   let inMetaBlock = false;
   let inFencedJson = false;
+  /** Plain-text metadata (Conversation context, inter-session provenance). */
+  let inPlainBlock = false;
 
   for (let i = 0; i < strippedLeadingPrefixLines.length; i++) {
     const line = strippedLeadingPrefixLines[i];
@@ -230,16 +232,30 @@ export function stripInboundMetadata(text: string): string {
     // Detect start of a metadata block.
     if (!inMetaBlock && isInboundMetaSentinelLine(line)) {
       const next = strippedLeadingPrefixLines[i + 1];
-      if (next?.trim() !== "```json") {
-        result.push(line);
+      if (next?.trim() === "```json") {
+        // JSON-fenced block (Conversation info, Sender info, etc.)
+        inMetaBlock = true;
+        inFencedJson = false;
+        inPlainBlock = false;
         continue;
       }
+      // Plain-text block (Conversation context, inter-session provenance).
+      // Terminated by a blank line or end of text.
       inMetaBlock = true;
       inFencedJson = false;
+      inPlainBlock = true;
       continue;
     }
 
     if (inMetaBlock) {
+      if (inPlainBlock) {
+        // Plain-text metadata: drop lines until a blank line.
+        if (line.trim() === "") {
+          inMetaBlock = false;
+          inPlainBlock = false;
+        }
+        continue;
+      }
       if (!inFencedJson && line.trim() === "```json") {
         inFencedJson = true;
         continue;
