@@ -85,6 +85,15 @@ describe("stripInboundMetadata", () => {
     }
   });
 
+  it("strips Conversation context plain-text metadata block", () => {
+    const convContextBlock = `Conversation context (untrusted, chronological, selected for current message):
+#32402 Thu 2026-11-05 16:32:29 PST Sabur: Some message
+#32403 Thu 2026-11-05 16:33:00 PST OpenClaw: Some reply
+
+Rest of the user message`;
+    expect(stripInboundMetadata(convContextBlock)).toBe("Rest of the user message");
+  });
+
   it("handles metadata block with no user text after it", () => {
     expect(stripInboundMetadata(CONV_BLOCK)).toBe("");
   });
