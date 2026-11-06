@@ -308,6 +308,7 @@ export function parseSessionEntries(content: string): FileEntry[] {
     }
     try {
       const entry = JSON.parse(line) as FileEntry;
+      stripToolResultDetailsFromEntry(entry);
       entries.push(entry);
     } catch {
       // Skip malformed lines
@@ -408,6 +409,22 @@ export function loadEntriesFromFile(filePath: string): FileEntry[] {
   return entries;
 }
 
+/**
+ * Strip toolResult details on load so on-disk bytes match what was sent to
+ * the LLM provider (exo KV cache operates on raw token streams). The model
+ * never sees `details` — it's execution metadata only.
+ * This also ensures rewrites naturally produce clean output.
+ */
+function stripToolResultDetailsFromEntry(entry: FileEntry): void {
+  if (
+    entry.type === "message" &&
+    entry.message.role === "toolResult" &&
+    "details" in entry.message
+  ) {
+    delete (entry.message as { details?: unknown }).details;
+  }
+}
+
 function parseJsonlEntries(content: string): FileEntry[] {
   const entries: FileEntry[] = [];
   const lines = content.trim().split("\n");
@@ -418,6 +435,7 @@ function parseJsonlEntries(content: string): FileEntry[] {
     }
     try {
       const entry = JSON.parse(line) as FileEntry;
+      stripToolResultDetailsFromEntry(entry);
       entries.push(entry);
     } catch {
       // Skip malformed lines
@@ -574,7 +592,9 @@ async function buildSessionInfo(filePath: string): Promise<SessionInfo | null> {
         continue;
       }
       try {
-        entries.push(JSON.parse(line) as FileEntry);
+        const entry = JSON.parse(line) as FileEntry;
+        stripToolResultDetailsFromEntry(entry);
+        entries.push(entry);
       } catch {
         // Skip malformed lines
       }
